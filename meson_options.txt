@@ -44,3 +44,7 @@ option('zshcompletiondir',
        type: 'string',
        value: '',
        description: 'Directory for zsh completion scripts ["no" disables]')
+option('installed_tests',
+       type : 'boolean',
+       value : true,
+       description : 'Install integration tests')
