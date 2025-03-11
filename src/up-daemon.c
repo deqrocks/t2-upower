@@ -33,6 +33,7 @@
 #include "up-polkit.h"
 #include "up-device-list.h"
 #include "up-device.h"
+#include "up-device-kbd-backlight.h"
 #include "up-backend.h"
 #include "up-daemon.h"
 
@@ -43,6 +44,7 @@ struct UpDaemonPrivate
 	UpPolkit		*polkit;
 	UpBackend		*backend;
 	UpDeviceList		*power_devices;
+	UpDeviceList		*kbd_backlight_devices;
 	guint			 action_timeout_id;
 	guint			 refresh_batteries_id;
 	guint			 warning_level_id;
@@ -601,6 +603,7 @@ up_daemon_shutdown (UpDaemon *daemon)
 
 	/* forget about discovered devices */
 	up_device_list_clear (daemon->priv->power_devices);
+	up_device_list_clear (daemon->priv->kbd_backlight_devices);
 
 	/* release UpDaemon reference */
 	g_object_run_dispose (G_OBJECT (daemon->priv->display_device));
@@ -1154,6 +1157,7 @@ up_daemon_init (UpDaemon *daemon)
 	daemon->priv->polkit = up_polkit_new ();
 	daemon->priv->config = up_config_new ();
 	daemon->priv->power_devices = up_device_list_new ();
+	daemon->priv->kbd_backlight_devices = up_device_list_new ();
 	daemon->priv->display_device = up_device_new (daemon, NULL);
 	daemon->priv->poll_source = g_source_new (&poll_source_funcs, sizeof (GSource));
 
@@ -1238,6 +1242,7 @@ up_daemon_finalize (GObject *object)
 	g_clear_pointer (&daemon->priv->poll_source, g_source_destroy);
 
 	g_object_unref (priv->power_devices);
+	g_object_unref (priv->kbd_backlight_devices);
 	g_object_unref (priv->display_device);
 	g_object_unref (priv->polkit);
 	g_object_unref (priv->config);
