@@ -1037,35 +1037,50 @@ up_daemon_get_env_override (UpDaemon *self)
  * up_daemon_device_added_cb:
  **/
 static void
-up_daemon_device_added_cb (UpBackend *backend, UpDevice *device, UpDaemon *daemon)
+up_daemon_device_added_cb (UpBackend *backend, GObject *device, UpDaemon *daemon)
 {
 	const gchar *object_path;
 	UpDaemonPrivate *priv = daemon->priv;
 
 	g_return_if_fail (UP_IS_DAEMON (daemon));
-	g_return_if_fail (UP_IS_DEVICE (device));
+	g_return_if_fail (UP_IS_DEVICE (device) || UP_IS_DEVICE_KBD_BACKLIGHT (device));
 
-	/* add to device list */
-	up_device_list_insert (priv->power_devices, device);
+	if (UP_IS_DEVICE (device)) {
+		/* power_supply */
+		/* add to device list */
+		up_device_list_insert (priv->power_devices, device);
 
-	/* connect, so we get changes */
-	g_signal_connect (device, "notify",
-			  G_CALLBACK (up_daemon_device_changed_cb), daemon);
+		/* connect, so we get changes */
+		g_signal_connect (device, "notify",
+				  G_CALLBACK (up_daemon_device_changed_cb), daemon);
 
-	/* emit */
-	object_path = up_device_get_object_path (device);
-	if (object_path == NULL) {
-		g_debug ("Device %s was unregistered before it was on the bus",
-			 up_exported_device_get_native_path (UP_EXPORTED_DEVICE (device)));
-		return;
+		/* emit */
+		object_path = up_device_get_object_path (UP_DEVICE (device));
+		if (object_path == NULL) {
+			g_debug ("Device %s was unregistered before it was on the bus",
+				 up_exported_device_get_native_path (UP_EXPORTED_DEVICE (device)));
+			return;
+		}
+
+		/* Ensure we poll the new device if needed */
+		g_source_set_ready_time (daemon->priv->poll_source, 0);
+
+		g_debug ("emitting added: %s", object_path);
+		up_daemon_update_warning_level (daemon);
+		up_exported_daemon_emit_device_added (UP_EXPORTED_DAEMON (daemon), object_path);
+	} else {
+		/*leds*/
+		g_debug ("Add a led device to the device list");
+		/* emit */
+		object_path = up_device_kbd_backlight_get_object_path (UP_DEVICE_KBD_BACKLIGHT (device));
+		if (object_path == NULL) {
+			g_debug ("Device %s was unregistered before it was on the bus",
+				 up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device)));
+			return;
+		}
+		up_device_list_insert (priv->kbd_backlight_devices, G_OBJECT (device));
+		up_exported_daemon_emit_device_added (UP_EXPORTED_DAEMON (daemon), object_path);
 	}
-
-	/* Ensure we poll the new device if needed */
-	g_source_set_ready_time (daemon->priv->poll_source, 0);
-
-	g_debug ("emitting added: %s", object_path);
-	up_daemon_update_warning_level (daemon);
-	up_exported_daemon_emit_device_added (UP_EXPORTED_DAEMON (daemon), object_path);
 }
 
 /**
@@ -1078,15 +1093,22 @@ up_daemon_device_removed_cb (UpBackend *backend, UpDevice *device, UpDaemon *dae
 	UpDaemonPrivate *priv = daemon->priv;
 
 	g_return_if_fail (UP_IS_DAEMON (daemon));
-	g_return_if_fail (UP_IS_DEVICE (device));
+	g_return_if_fail (UP_IS_DEVICE (device) || UP_IS_DEVICE_KBD_BACKLIGHT (device));
 
 	g_signal_handlers_disconnect_by_data (device, daemon);
 
-	/* remove from list (device remains valid during the function call) */
-	up_device_list_remove (priv->power_devices, device);
-
 	/* emit */
-	object_path = up_device_get_object_path (device);
+	if (UP_IS_DEVICE (device)) {
+		/* remove from list (device remains valid during the function call) */
+		up_device_list_remove (priv->power_devices, device);
+		object_path = up_device_get_object_path (device);
+	} else if (UP_IS_DEVICE_KBD_BACKLIGHT (device)) {
+		/* remove from list (device remains valid during the function call) */
+		up_device_list_remove (priv->kbd_backlight_devices, device);
+		object_path = up_device_kbd_backlight_get_object_path (UP_DEVICE_KBD_BACKLIGHT (device));
+	} else {
+		return;
+	}
 
 	/* don't crash the session */
 	if (object_path == NULL) {
@@ -1096,6 +1118,10 @@ up_daemon_device_removed_cb (UpBackend *backend, UpDevice *device, UpDaemon *dae
 	}
 	g_debug ("emitting device-removed: %s", object_path);
 	up_exported_daemon_emit_device_removed (UP_EXPORTED_DAEMON (daemon), object_path);
+
+	/* Unregister keyboard backlight dbus path */
+	if (UP_IS_DEVICE_KBD_BACKLIGHT (device))
+		up_device_kbd_backlight_unregister (UP_DEVICE_KBD_BACKLIGHT (device));
 
 	/* In case a battery was removed */
 	up_daemon_refresh_battery_devices (daemon);
