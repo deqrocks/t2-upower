@@ -79,6 +79,19 @@
     </method>
 
     <!-- ************************************************************ -->
+    <property name="NativePath" type="s" access="read">
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            OS specific native path of the keyboard backlight LED device. On Linux this
+            is the sysfs path, for
+            example <doc:tt>/sys/devices/platform/thinkpad_acpi/leds/tpacpi\:\:kbd_backlight</doc:tt>.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </property>
+
+    <!-- ************************************************************ -->
     <signal name="BrightnessChanged">
       <arg name="value" direction="out" type="i">
         <doc:doc>
