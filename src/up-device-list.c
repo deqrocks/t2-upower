@@ -28,6 +28,7 @@
 #include "up-native.h"
 #include "up-device-list.h"
 #include "up-device.h"
+#include "up-device-kbd-backlight.h"
 
 static void	up_device_list_finalize	(GObject		*object);
 
@@ -80,7 +81,10 @@ up_device_list_insert (UpDeviceList *list, gpointer device)
 	g_return_val_if_fail (UP_IS_DEVICE_LIST (list), FALSE);
 	g_return_val_if_fail (device != NULL, FALSE);
 
-	native = up_device_get_native (UP_DEVICE (device));
+	if (UP_IS_DEVICE_KBD_BACKLIGHT (device))
+		native = up_device_kbd_backlight_get_native (UP_DEVICE_KBD_BACKLIGHT (device));
+	else
+		native = up_device_get_native (UP_DEVICE (device));
 	g_return_val_if_fail (native != NULL, FALSE);
 
 	native_path = up_native_get_native_path (native);
