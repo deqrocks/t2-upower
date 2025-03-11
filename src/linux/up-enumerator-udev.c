@@ -31,6 +31,7 @@
 #include "up-device-supply-battery.h"
 #include "up-device-hid.h"
 #include "up-device-wup.h"
+#include "up-kbd-backlight-led.h"
 #ifdef HAVE_IDEVICE
 #include "up-device-idevice.h"
 #endif /* HAVE_IDEVICE */
@@ -217,18 +218,115 @@ emit_changes_for_siblings (UpEnumeratorUdev *self,
 }
 
 static void
+power_supply_add_helper (UpEnumeratorUdev  *self,
+			 const gchar       *action,
+			 GUdevDevice       *device,
+			 GUdevClient       *client,
+			 GObject           *obj,
+			 const gchar       *device_key)
+{
+	g_autoptr(UpDevice) up_dev = NULL;
+	g_autofree char *parent_id = NULL;
+
+	up_dev = device_new (self, device);
+
+	/* We work with `obj` further down, which is the UpDevice
+	 * if we have it, or the GUdevDevice if not. */
+	if (up_dev)
+		obj = G_OBJECT (up_dev);
+	else
+		obj = G_OBJECT (device);
+	g_hash_table_insert (self->known, (char*) device_key, g_object_ref (obj));
+
+	/* Fire relevant sibling events and insert into lookup table */
+	parent_id = device_parent_id (device);
+	g_debug ("device %s has parent id: %s", device_key, parent_id);
+	if (parent_id) {
+		GPtrArray *devices = NULL;
+		char *parent_id_key = NULL;
+		int i;
+
+		g_hash_table_lookup_extended (self->siblings, parent_id,
+		                              (gpointer*)&parent_id_key, (gpointer*)&devices);
+		if (!devices)
+			devices = g_ptr_array_new_with_free_func (g_object_unref);
+
+		for (i = 0; i < devices->len; i++) {
+			GObject *sibling = g_ptr_array_index (devices, i);
+
+			if (up_dev) {
+				g_autoptr(GUdevDevice) d = get_latest_udev_device (self, sibling);
+				if (d)
+					up_device_sibling_discovered (up_dev, G_OBJECT (d));
+			}
+			if (UP_IS_DEVICE (sibling))
+				up_device_sibling_discovered (UP_DEVICE (sibling), obj);
+		}
+
+		g_ptr_array_add (devices, g_object_ref (obj));
+		if (!parent_id_key) {
+			parent_id_key = g_strdup (parent_id);
+			g_hash_table_insert (self->siblings, parent_id_key, devices);
+		}
+
+		/* Just a reference to the hash table key */
+		g_object_set_data (obj, "udev-parent-id", parent_id_key);
+	}
+
+	if (up_dev)
+		g_signal_emit_by_name (self, "device-added", up_dev);
+}
+
+static void
+kbd_backlight_add_helper (UpEnumeratorUdev  *self,
+			  const gchar        *action,
+			  GUdevDevice        *device,
+			  GUdevClient        *client,
+			  GObject            *obj,
+			  const char         *device_key)
+{
+	UpDaemon *daemon;
+	g_autoptr(UpDeviceKbdBacklight) up_kbd = NULL;
+	g_autofree char *parent_id = NULL;
+
+	daemon = up_enumerator_get_daemon (UP_ENUMERATOR (self));
+
+	up_kbd = g_initable_new (UP_TYPE_KBD_BACKLIGHT_LED, NULL, NULL,
+				 "daemon", daemon,
+				 "native", device,
+				 NULL);
+
+	if (up_kbd)
+		obj = G_OBJECT (up_kbd);
+	else
+		obj = G_OBJECT (device);
+	g_hash_table_insert (self->known, (char*) device_key, g_object_ref (obj));
+	if (up_kbd)
+		g_signal_emit_by_name (self, "device-added", G_OBJECT (up_kbd));
+}
+
+static void
 uevent_signal_handler_cb (UpEnumeratorUdev *self,
-                          const gchar      *action,
-                          GUdevDevice      *device,
-                          GUdevClient      *client)
+			  const gchar      *action,
+			  GUdevDevice      *device,
+			  GUdevClient      *client)
 {
 	const char *device_key = g_udev_device_get_sysfs_path (device);
+	gboolean is_kbd_backlight = FALSE;
 
 	g_debug ("Received uevent %s on device %s", action, device_key);
 
 	/* Work around the fact that we don't get a REMOVE event in some cases. */
 	if (g_strcmp0 (g_udev_device_get_subsystem (device), "power_supply") == 0)
 		device_key = g_udev_device_get_name (device);
+
+	if (g_strcmp0 (g_udev_device_get_subsystem (device), "leds") == 0) {
+		if (g_strrstr (device_key, "kbd_backlight") == NULL)
+			return;
+		is_kbd_backlight = TRUE;
+	}
+
+	g_debug ("uevent subsystem %s", g_udev_device_get_subsystem (device));
 
 	/* It appears that we may not always receive an "add" event. As such,
 	 * treat "add"/"change" in the same way, by first checking if we have
@@ -250,56 +348,10 @@ uevent_signal_handler_cb (UpEnumeratorUdev *self,
 		}
 
 		if (!obj) {
-			g_autoptr(UpDevice) up_dev = NULL;
-			g_autofree char *parent_id = NULL;
-
-			up_dev = device_new (self, device);
-
-			/* We work with `obj` further down, which is the UpDevice
-			 * if we have it, or the GUdevDevice if not. */
-			if (up_dev)
-				obj = G_OBJECT (up_dev);
+			if (is_kbd_backlight)
+				kbd_backlight_add_helper (self, action, device, client, obj, device_key);
 			else
-				obj = G_OBJECT (device);
-			g_hash_table_insert (self->known, (char*) device_key, g_object_ref (obj));
-
-			/* Fire relevant sibling events and insert into lookup table */
-			parent_id = device_parent_id (device);
-			g_debug ("device %s has parent id: %s", device_key, parent_id);
-			if (parent_id) {
-				GPtrArray *devices = NULL;
-				char *parent_id_key = NULL;
-				int i;
-
-				g_hash_table_lookup_extended (self->siblings, parent_id,
-				                              (gpointer*)&parent_id_key, (gpointer*)&devices);
-				if (!devices)
-					devices = g_ptr_array_new_with_free_func (g_object_unref);
-
-				for (i = 0; i < devices->len; i++) {
-					GObject *sibling = g_ptr_array_index (devices, i);
-
-					if (up_dev) {
-						g_autoptr(GUdevDevice) d = get_latest_udev_device (self, sibling);
-						if (d)
-							up_device_sibling_discovered (up_dev, G_OBJECT (d));
-					}
-					if (UP_IS_DEVICE (sibling))
-						up_device_sibling_discovered (UP_DEVICE (sibling), obj);
-				}
-
-				g_ptr_array_add (devices, g_object_ref (obj));
-				if (!parent_id_key) {
-					parent_id_key = g_strdup (parent_id);
-					g_hash_table_insert (self->siblings, parent_id_key, devices);
-				}
-
-				/* Just a reference to the hash table key */
-				g_object_set_data (obj, "udev-parent-id", parent_id_key);
-			}
-
-			if (up_dev)
-				g_signal_emit_by_name (self, "device-added", up_dev);
+				power_supply_add_helper (self, action, device, client, obj, device_key);
 
 		} else {
 			if (!UP_IS_DEVICE (obj)) {
@@ -325,6 +377,11 @@ uevent_signal_handler_cb (UpEnumeratorUdev *self,
 			char *parent_id;
 
 			g_debug ("removing device for path %s", g_udev_device_get_sysfs_path (device));
+
+			if (is_kbd_backlight) {
+				g_signal_emit_by_name (self, "device-removed", obj);
+				return;
+			}
 
 			parent_id = g_object_get_data (obj, "udev-parent-id");
 
