@@ -424,8 +424,8 @@ up_enumerator_udev_initable_init (UpEnumerator *enumerator)
 	guint i;
 	const gchar **subsystems;
 	/* List "input" first just to avoid some sibling hotplugging later */
-	const gchar *subsystems_no_wup[] = {"input", "power_supply", "usb", "usbmisc", "sound", NULL};
-	const gchar *subsystems_wup[] = {"input", "power_supply", "usb", "usbmisc", "sound", "tty", NULL};
+	const gchar *subsystems_no_wup[] = {"input", "power_supply", "usb", "usbmisc", "sound", "leds", NULL};
+	const gchar *subsystems_wup[] = {"input", "power_supply", "usb", "usbmisc", "sound", "tty", "leds", NULL};
 
 	config = up_config_new ();
 	if (up_config_get_boolean (config, "EnableWattsUpPro"))
