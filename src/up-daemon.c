@@ -499,6 +499,38 @@ up_daemon_enumerate_devices (UpExportedDaemon *skeleton,
 	return TRUE;
 }
 
+static gboolean
+up_daemon_enumerate_kbd_backlights (UpExportedDaemon *skeleton,
+				    GDBusMethodInvocation *invocation,
+				    UpDaemon *daemon)
+{
+	guint i;
+	GPtrArray *array;
+	GPtrArray *object_paths;
+	UpDeviceKbdBacklight *kbd_backlight;
+
+	/* build a pointer array of the object paths */
+	object_paths = g_ptr_array_new_with_free_func (g_free);
+	array = up_device_list_get_array (daemon->priv->kbd_backlight_devices);
+	for (i = 0; i < array->len; i++) {
+		const char *object_path;
+		kbd_backlight = (UpDeviceKbdBacklight *) g_ptr_array_index (array, i);
+		object_path = up_device_kbd_backlight_get_object_path (kbd_backlight);
+		if (object_path != NULL)
+			g_ptr_array_add (object_paths, g_strdup (object_path));
+	}
+	g_ptr_array_unref (array);
+	g_ptr_array_add (object_paths, NULL);
+
+	/* return it on the bus */
+	up_exported_daemon_complete_enumerate_kbd_backlights (skeleton, invocation,
+							      (const gchar **) object_paths->pdata);
+
+	/* free */
+	g_ptr_array_unref (object_paths);
+	return TRUE;
+}
+
 /**
  * up_daemon_get_display_device:
  **/
@@ -1210,6 +1242,8 @@ up_daemon_init (UpDaemon *daemon)
 
 	g_signal_connect (daemon, "handle-enumerate-devices",
 			  G_CALLBACK (up_daemon_enumerate_devices), daemon);
+	g_signal_connect (daemon, "handle-enumerate-kbd_backlights",
+				G_CALLBACK (up_daemon_enumerate_kbd_backlights), daemon);
 	g_signal_connect (daemon, "handle-get-critical-action",
 			  G_CALLBACK (up_daemon_get_critical_action), daemon);
 	g_signal_connect (daemon, "handle-get-display-device",
