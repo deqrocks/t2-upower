@@ -51,6 +51,21 @@ method return sender=:1.386 -> dest=:1.451 reply_serial=2
       </doc:doc>
     </method>
 
+    <method name="EnumerateKbdBacklights">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+      <arg name="KbdBacklight" direction="out" type="ao">
+        <doc:doc><doc:summary>An array of object paths for keyboard backlight LEDs.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            Enumerate all keyboard backlight LED objects on the system.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
     <method name="GetDisplayDevice">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg name="device" direction="out" type="o">
