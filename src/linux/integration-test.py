@@ -353,6 +353,45 @@ class Tests(dbusmock.DBusTestCase):
             None,
         )
 
+    def get_kbd_backlight_brightness(self, kbd_backlight):
+        return self.dbus.call_sync(
+            UP,
+            kbd_backlight,
+            "org.freedesktop.UPower.KbdBacklight",
+            "GetBrightness",
+            None,
+            None,
+            Gio.DBusCallFlags.NO_AUTO_START,
+            -1,
+            None,
+        ).unpack()[0]
+
+    def get_kbd_backlight_max_brightness(self, kbd_backlight):
+        return self.dbus.call_sync(
+            UP,
+            kbd_backlight,
+            "org.freedesktop.UPower.KbdBacklight",
+            "GetMaxBrightness",
+            None,
+            None,
+            Gio.DBusCallFlags.NO_AUTO_START,
+            -1,
+            None,
+        ).unpack()[0]
+
+    def set_kbd_backlight_brightness(self, kbd_backlight, brightness):
+        self.dbus.call_sync(
+            UP,
+            kbd_backlight,
+            "org.freedesktop.UPower.KbdBacklight",
+            "SetBrightness",
+            GLib.Variant("(i)", (brightness,)),
+            None,
+            Gio.DBusCallFlags.NO_AUTO_START,
+            -1,
+            None,
+        )
+
     def assertDevs(self, expected):
         devs = self.proxy.EnumerateDevices()
         names = sorted(n.split("/")[-1] for n in devs)
@@ -5725,6 +5764,97 @@ class Tests(dbusmock.DBusTestCase):
         devs = self.proxy.EnumerateDevices()
         # Only the battery should be listed, not the BMS or charge pump master.
         self.assertEqual(len(devs), 1)
+
+        self.stop_daemon()
+
+    #
+    # Single Keyboard backlight test
+    #
+    def test_single_kbd_backlight(self):
+        """Set One Keyboard backlight"""
+
+        kbd0 = self.testbed.add_device(
+            "leds",
+            "tpacpi::kbd_backlight",
+            None,
+            [
+                "max_brightness",
+                "2",
+                "brightness",
+                "1",
+            ],
+            [],
+        )
+
+        self.start_daemon()
+        kbds = self.proxy.EnumerateKbdBacklights()
+        self.assertEqual(len(kbds), 1)
+        kbd0_up = kbds[0]
+
+        self.assertEqual(self.get_kbd_backlight_brightness(kbd0_up), 1)
+        self.assertEqual(self.get_kbd_backlight_max_brightness(kbd0_up), 2)
+
+        # brightness is in the range 0 to max_brightness
+        self.set_kbd_backlight_brightness(kbd0_up, 0)
+        with open(f"/sys/class/leds/tpacpi::kbd_backlight/brightness") as fp:
+            self.assertEqual(fp.read(), "0")
+
+        # value is greater than max_brightness
+        self.set_kbd_backlight_brightness(kbd0_up, 200)
+        with open(f"/sys/class/leds/tpacpi::kbd_backlight/brightness") as fp:
+            self.assertEqual(fp.read(), "2")
+
+        self.stop_daemon()
+
+    #
+    # Two Keyboard backlight test
+    #
+    def test_two_kbd_backlight(self):
+        """Set Two Keyboard backlight"""
+
+        kbd0 = self.testbed.add_device(
+            "leds",
+            "tpacpi::kbd_backlight",
+            None,
+            [
+                "max_brightness",
+                "2",
+                "brightness",
+                "1",
+            ],
+            [],
+        )
+
+        kbd1 = self.testbed.add_device(
+            "leds",
+            "Katecatacpi::kbd_backlight",
+            None,
+            [
+                "max_brightness",
+                "255",
+                "brightness",
+                "100",
+            ],
+            [],
+        )
+
+        self.start_daemon()
+        kbds = self.proxy.EnumerateKbdBacklights()
+        self.assertEqual(len(kbds), 2)
+        kbd0_up = kbds[0]
+        kbd1_up = kbds[1]
+
+        self.assertEqual(self.get_kbd_backlight_brightness(kbd0_up), 100)
+        self.assertEqual(self.get_kbd_backlight_max_brightness(kbd0_up), 255)
+        self.set_kbd_backlight_brightness(kbd0_up, 200)
+        with open(f"/sys/class/leds/Katecatacpi::kbd_backlight/brightness") as fp:
+            self.assertEqual(fp.read(), "200")
+
+        self.assertEqual(self.get_kbd_backlight_brightness(kbd1_up), 1)
+        self.assertEqual(self.get_kbd_backlight_max_brightness(kbd1_up), 2)
+        self.set_kbd_backlight_brightness(kbd1_up, 0)
+        with open(f"/sys/class/leds/tpacpi::kbd_backlight/brightness") as fp:
+            self.assertEqual(fp.read(), "0")
 
         self.stop_daemon()
 
