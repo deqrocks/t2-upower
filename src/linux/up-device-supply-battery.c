@@ -45,6 +45,20 @@ enum {
 	PROP_IGNORE_SYSTEM_PERCENTAGE
 };
 
+typedef enum {
+	CHARGE_TYPES_0,
+	CHARGE_TYPES_UNKNOWN = 1 << 0,
+	CHARGE_TYPES_NA = 1 << 1,
+	CHARGE_TYPES_TRICKLE = 1 << 2,
+	CHARGE_TYPES_FAST = 1 << 3,
+	CHARGE_TYPES_STANDARD = 1 << 4,
+	CHARGE_TYPES_ADAPTIVE = 1 << 5,
+	CHARGE_TYPES_CUSTOM = 1 << 6,
+	CHARGE_TYPES_LONG_LIFE = 1 << 7,
+	CHARGE_TYPES_BYPASS = 1 << 8,
+	CHARGE_TYPE_LAST,
+} DeviceBatteryChargeTypes;
+
 struct _UpDeviceSupplyBattery
 {
 	UpDeviceBattery		 parent;
@@ -53,6 +67,8 @@ struct _UpDeviceSupplyBattery
 	gdouble			*energy_old;
 	guint			 energy_old_first;
 	gdouble			 rate_old;
+	guint			 supported_charge_types;
+	DeviceBatteryChargeTypes charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
 };
@@ -183,6 +199,133 @@ up_device_supply_battery_get_charge_control_limits (GUdevDevice *native, UpBatte
 	info->charge_control_end_threshold = charge_control_end_threshold;
 
 	return TRUE;
+}
+
+static gchar*
+remove_brackets (const gchar *type)
+{
+	GString *washed_type = NULL;
+
+	washed_type = g_string_new(NULL);
+
+	for (int i = 0; type[i] != '\0'; i++) {
+		if (type[i] == '[')
+			continue;
+		if (type[i] == ']')
+			break;
+		g_string_append_c (washed_type, type[i]);
+	}
+
+	return g_string_free (washed_type, FALSE);
+}
+
+static DeviceBatteryChargeTypes
+up_device_battery_charge_type_str_to_enum (const gchar *type)
+{
+	if (type == NULL)
+		return CHARGE_TYPE_LAST;
+
+	if (!g_strcmp0 ("Unknown", type))
+		return CHARGE_TYPES_UNKNOWN;
+	else if (!g_strcmp0 ("N/A", type))
+		return CHARGE_TYPES_NA;
+	else if (!g_strcmp0 ("Trickle", type))
+		return CHARGE_TYPES_TRICKLE;
+	else if (!g_strcmp0 ("Fast", type))
+		return CHARGE_TYPES_FAST;
+	else if (!g_strcmp0 ("Standard", type))
+		return CHARGE_TYPES_STANDARD;
+	else if (!g_strcmp0 ("Adaptive", type))
+		return CHARGE_TYPES_ADAPTIVE;
+	else if (!g_strcmp0 ("Custom", type))
+		return CHARGE_TYPES_CUSTOM;
+	else if (!g_strcmp0 ("Long_Life", type))
+		return CHARGE_TYPES_LONG_LIFE;
+	else if (!g_strcmp0 ("Bypass", type))
+		return CHARGE_TYPES_BYPASS;
+
+	/* invalid type */
+	return CHARGE_TYPE_LAST;
+}
+
+static gchar *
+up_device_battery_charge_type_enum_to_str (DeviceBatteryChargeTypes types)
+{
+	if (types == CHARGE_TYPES_UNKNOWN)
+		return g_strdup ("Unknown");
+
+	if (types == CHARGE_TYPES_NA)
+		return g_strdup ("N/A");
+
+	if (types == CHARGE_TYPES_TRICKLE)
+		return g_strdup ("Trickle");
+
+	if (types == CHARGE_TYPES_FAST)
+		return g_strdup ("Fast");
+
+	if (types == CHARGE_TYPES_STANDARD)
+		return g_strdup ("Standard");
+
+	if (types == CHARGE_TYPES_ADAPTIVE)
+		return g_strdup ("Adaptive");
+
+	if (types == CHARGE_TYPES_CUSTOM)
+		return g_strdup ("Custom");
+
+	if (types == CHARGE_TYPES_LONG_LIFE)
+		return g_strdup ("Long_Life");
+
+	if (types == CHARGE_TYPES_BYPASS)
+		return g_strdup ("Bypass");
+
+	/* invalid type */
+	return g_strdup ("Unknown");
+}
+
+static DeviceBatteryChargeTypes
+up_device_battery_charge_find_available_charge_types_for_charging (UpDevice *device) {
+	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
+	DeviceBatteryChargeTypes charge_types = self->supported_charge_types;
+
+	if (charge_types & CHARGE_TYPES_FAST)
+		return CHARGE_TYPES_FAST;
+
+	if (charge_types & CHARGE_TYPES_STANDARD)
+		return CHARGE_TYPES_STANDARD;
+
+	if (charge_types & CHARGE_TYPES_ADAPTIVE)
+		return CHARGE_TYPES_ADAPTIVE;
+
+	return CHARGE_TYPE_LAST;
+}
+
+static void
+up_device_battery_get_supported_charge_types (UpDevice *device)
+{
+	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
+	GUdevDevice *native;
+	const gchar * charge_type_str = NULL;
+	gchar *tmp_type = NULL;
+	g_auto (GStrv) types = NULL;
+
+	native = G_UDEV_DEVICE (up_device_get_native (device));
+
+	charge_type_str = g_udev_device_get_sysfs_attr (native, "charge_types");
+
+	if (charge_type_str == NULL)
+		return;
+
+	types = g_strsplit (charge_type_str, " ", 0);
+	for (int i = 0; i < g_strv_length(types); i++) {
+		if (g_utf8_strchr (types[i], 1, '[') != NULL) {
+			tmp_type = remove_brackets (types[i]);
+			self->charge_type = up_device_battery_charge_type_str_to_enum (tmp_type);
+		} else {
+			tmp_type = g_strdup (types[i]);
+		}
+		self->supported_charge_types |= up_device_battery_charge_type_str_to_enum (tmp_type);
+		g_free (tmp_type);
+	}
 }
 
 static gboolean
@@ -319,6 +462,9 @@ up_device_supply_battery_refresh (UpDevice *device,
 
 	values.temperature = g_udev_device_get_sysfs_attr_as_double_uncached (native, "temp") / 10.0;
 
+	/* refresh the changes of charge_types */
+	up_device_battery_get_supported_charge_types (device);
+
 	up_device_battery_report (battery, &values, reason);
 
 	return TRUE;
@@ -417,14 +563,57 @@ up_device_supply_device_path (GUdevDevice *device)
 }
 
 static gboolean
+up_device_supply_battery_is_charge_type_exist (UpDevice *device, const gchar *charge_type) {
+	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
+	DeviceBatteryChargeTypes type;
+
+	type = up_device_battery_charge_type_str_to_enum (charge_type);
+
+	if (type & self->supported_charge_types)
+		return TRUE;
+
+	return FALSE;
+}
+
+static gboolean
+up_device_supply_battery_set_battery_charge_types (UpDevice *device, const gchar *charge_type, GError **error) {
+	GUdevDevice *native;
+	g_autofree gchar *native_path = NULL;
+	g_autofree gchar *type_filename = NULL;
+
+	native = G_UDEV_DEVICE (up_device_get_native (device));
+
+	/* return, if the attribute "charge_types" is not found */
+	if (!g_udev_device_has_sysfs_attr (native, "charge_types"))
+		return TRUE;
+
+	native_path = up_device_supply_device_path (native);
+	type_filename = g_build_filename (native_path, "charge_types", NULL);
+
+	if (!up_device_supply_battery_is_charge_type_exist (device, charge_type))
+		return TRUE;
+
+	if (!g_file_set_contents_full (type_filename, charge_type, -1,
+		G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, error)) {
+		g_set_error_literal (error, G_IO_ERROR,
+				     G_IO_ERROR_FAILED, "Failed to set charge_types");
+		return TRUE;
+	}
+
+	return TRUE;
+}
+
+static gboolean
 up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint start, guint end, GError **error) {
 	guint err_count = 0;
 	GUdevDevice *native;
 	g_autofree gchar *native_path = NULL;
 	g_autofree gchar *start_filename = NULL;
 	g_autofree gchar *end_filename = NULL;
+	g_autofree gchar *charge_type_str = NULL;
 	g_autoptr (GString) start_str = g_string_new (NULL);
 	g_autoptr (GString) end_str = g_string_new (NULL);
+	DeviceBatteryChargeTypes charge_type_enum;
 
 	native = G_UDEV_DEVICE (up_device_get_native (device));
 	native_path = up_device_supply_device_path (native);
@@ -455,6 +644,17 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 		g_set_error_literal (error, G_IO_ERROR,
 				     G_IO_ERROR_FAILED, "Failed to set charge control thresholds");
 		return FALSE;
+	}
+
+	if (start == 0 && end == 100) {
+		charge_type_enum = up_device_battery_charge_find_available_charge_types_for_charging (device);
+		charge_type_str = up_device_battery_charge_type_enum_to_str (charge_type_enum);
+
+		up_device_supply_battery_set_battery_charge_types (device, charge_type_str, NULL);
+
+	} else {
+		/* for the Dell laptops, the charge_types has to be set to "Custom" to enable the charging threshold */
+		up_device_supply_battery_set_battery_charge_types (device, "Custom", NULL);
 	}
 
 	return TRUE;
