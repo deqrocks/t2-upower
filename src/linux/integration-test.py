@@ -1831,6 +1831,272 @@ class Tests(dbusmock.DBusTestCase):
             ) as fp:
                 self.assertEqual(fp.read(), "80")
 
+    def test_battery_charge_limit_multiple_batteries_with_charge_types(self):
+        """Enable the charge limit and the charge_types will be set to Custom if it is present"""
+
+        if not self.polkit:
+            self.start_polkitd({})
+        self.polkit_obj.SetAllowed(["org.freedesktop.UPower.enable-charging-limit"])
+
+        bat0 = self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "100",
+                "charge_types",
+                "Fast [Custom]",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT0", "CHARGE_LIMIT", "70,80"
+        )
+
+        bat1 = self.testbed.add_device(
+            "power_supply",
+            "BAT1",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "100",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT1", "CHARGE_LIMIT", "70,80"
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+        bat0_up = devs[0]
+        bat1_up = devs[0]
+
+        for bat in [bat0_up, bat1_up]:
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdSupported"), True
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdEnabled"), False
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeStartThreshold"), 70
+            )
+            self.assertEqual(self.get_dbus_dev_property(bat, "ChargeEndThreshold"), 80)
+
+        self.enable_charge_limits(bat0_up, True)
+        self.enable_charge_limits(bat1_up, True)
+
+        # Battery 0 with a charge_type attribute
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdEnabled"), True
+        )
+        battery_name = bat0_up.split("_")[-1]
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_start_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "70")
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_end_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "80")
+        with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
+            self.assertEqual(fp.read(), "Custom")
+
+        # Battery 1 is without a charge_type attribute, and the daemon won't complain
+
+        self.assertEqual(
+            self.get_dbus_dev_property(bat1_up, "ChargeThresholdEnabled"), True
+        )
+        battery_name = bat1_up.split("_")[-1]
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_start_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "70")
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_end_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "80")
+
+        # disable charging limit
+        self.testbed.set_attribute(bat0, "charge_types", "Fast [Custom]")
+        self.enable_charge_limits(bat0_up, False)
+        self.enable_charge_limits(bat1_up, False)
+
+        # Battery 0 with a charge_type attribute
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdEnabled"), False
+        )
+        battery_name = bat0_up.split("_")[-1]
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_start_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "0")
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_end_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "100")
+        with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
+            self.assertEqual(fp.read(), "Fast")
+
+    def test_battery_charge_limit_multiple_batteries_with_charge_types_Cutom_unsupported(
+        self,
+    ):
+        """Enable the charge limit and the charge_types will be set to Custom but "Custom" is not supported"""
+
+        if not self.polkit:
+            self.start_polkitd({})
+        self.polkit_obj.SetAllowed(["org.freedesktop.UPower.enable-charging-limit"])
+
+        bat0 = self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "100",
+                "charge_types",
+                "[Fast] Standard",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT0", "CHARGE_LIMIT", "70,80"
+        )
+
+        bat1 = self.testbed.add_device(
+            "power_supply",
+            "BAT1",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "100",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT1", "CHARGE_LIMIT", "70,80"
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+        bat0_up = devs[0]
+        bat1_up = devs[0]
+
+        for bat in [bat0_up, bat1_up]:
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdSupported"), True
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdEnabled"), False
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeStartThreshold"), 70
+            )
+            self.assertEqual(self.get_dbus_dev_property(bat, "ChargeEndThreshold"), 80)
+
+        self.enable_charge_limits(bat0_up, True)
+        self.enable_charge_limits(bat1_up, True)
+
+        # Battery 0 with a charge_type attribute
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdEnabled"), True
+        )
+        battery_name = bat0_up.split("_")[-1]
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_start_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "70")
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_end_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "80")
+        with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
+            # The attribute is not changed since "Custom" is not supported and the daemon won't complain
+            self.assertEqual(fp.read(), "[Fast] Standard")
+
+        # Battery 1 is without a charge_type attribute, and the daemon won't complain
+
+        self.assertEqual(
+            self.get_dbus_dev_property(bat1_up, "ChargeThresholdEnabled"), True
+        )
+        battery_name = bat1_up.split("_")[-1]
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_start_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "70")
+        with open(
+            f"/sys/class/power_supply/{battery_name}/charge_control_end_threshold"
+        ) as fp:
+            self.assertEqual(fp.read(), "80")
+
     def test_battery_charge_limit_multiple_batteries_polkit_not_allowed(self):
         """Battery with charge limits with multiple batteries, but polkit isn't allowed"""
 
