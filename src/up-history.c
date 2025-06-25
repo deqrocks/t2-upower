@@ -155,11 +155,11 @@ up_history_array_limit_resolution (GPtrArray *array, guint max_num)
 		guint64 preset;
 
 		item = (UpHistoryItem *) g_ptr_array_index (array, i);
-		preset = last + ((first - last) * (guint64) step) / max_num;
+		preset = first - ((first - last) * (guint64) step) / max_num;
 
 		/* if state changed or we went over the preset do a new point */
 		if (count > 0 &&
-		    (up_history_item_get_time (item) > preset ||
+		    (up_history_item_get_time (item) < preset ||
 		     up_history_item_get_state (item) != state)) {
 			item_new = up_history_item_new ();
 			up_history_item_set_time (item_new, time_s / count);
