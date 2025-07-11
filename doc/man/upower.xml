@@ -19,6 +19,7 @@
   <refsynopsisdiv>
     <cmdsynopsis>
       <command>upower</command>
+      <arg><option>--battery</option></arg>
       <arg><option>--dump</option></arg>
       <arg><option>--enumerate</option></arg>
       <arg><option>--monitor-detail</option></arg>
@@ -42,6 +43,14 @@
   <refsect1>
     <title>OPTIONS</title>
     <variablelist>
+      <varlistentry>
+        <term><option>-b</option>, <option>--battery</option></term>
+        <listitem>
+          <para>
+            Dump all parameters for battery devices.
+          </para>
+        </listitem>
+      </varlistentry>
       <varlistentry>
         <term><option>-d</option>, <option>--dump</option></term>
         <listitem>

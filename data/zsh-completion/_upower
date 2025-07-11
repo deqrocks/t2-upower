@@ -11,6 +11,7 @@ _enumerate_objects() {
 }
 
 _arguments \
+	"(--battery -b)"{--battery,-b}"[Dump all parameters for battery objects]" \
 	"(--enumerate -e)"{--enumerate,-e}"[Enumerate objects paths for devices]" \
 	"(--dump -d)"{--dump,-d}"[Dump all parameters for all objects]" \
 	"(--monitor -m)"{--monitor,-m}"[Monitor activity from the power daemon]" \

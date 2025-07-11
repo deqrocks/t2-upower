@@ -272,6 +272,7 @@ int
 main (int argc, char **argv)
 {
 	GOptionContext *context;
+	gboolean opt_battery = FALSE;
 	gboolean opt_dump = FALSE;
 	gboolean opt_enumerate = FALSE;
 	gboolean opt_monitor = FALSE;
@@ -287,6 +288,7 @@ main (int argc, char **argv)
 	UpDevice *device;
 
 	const GOptionEntry entries[] = {
+		{ "battery", 'b', 0, G_OPTION_ARG_NONE, &opt_battery, _("Dump all parameters for battery objects"), NULL },
 		{ "dump", 'd', 0, G_OPTION_ARG_NONE, &opt_dump, _("Dump all parameters for all objects"), NULL },
 		{ "enumerate", 'e', 0, G_OPTION_ARG_NONE, &opt_enumerate, _("Enumerate objects paths for devices"), NULL },
 		{ "monitor", 'm', 0, G_OPTION_ARG_NONE, &opt_monitor, _("Monitor activity from the power daemon"), NULL },
@@ -332,6 +334,11 @@ main (int argc, char **argv)
 
 	if (opt_enumerate)
 		return up_tool_output_enumerate (client);
+
+	if (opt_battery) {
+		device_filter = g_list_append (device_filter, GINT_TO_POINTER (UP_DEVICE_KIND_BATTERY));
+		opt_dump = TRUE;
+	}
 
 	if (opt_dump) {
 		retval = up_tool_output_device_dump (client, device_filter);
