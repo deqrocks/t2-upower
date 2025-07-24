@@ -69,6 +69,7 @@ struct _UpDeviceSupplyBattery
 	gdouble			 rate_old;
 	guint			 supported_charge_types;
 	UpDeviceSupplyBatteryChargeTypes charge_type;
+	gboolean		 charge_threshold_by_charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
 };
@@ -328,6 +329,41 @@ up_device_battery_get_supported_charge_types (UpDevice *device)
 	}
 }
 
+/**
+ * up_device_supply_battery_is_charge_threshold_by_charge_type:
+ * @device: the device to check
+ *
+ * Return %TRUE if the charge threshold is controlled by charge_types,
+ * %FALSE otherwise.
+ *
+ * Co-work-with: Cursor
+ * Reviewed-by: Kate Hsuan <hpa@redhat.com>
+ */
+static gboolean
+up_device_supply_battery_is_charge_threshold_by_charge_type (UpDevice *device) {
+	GUdevDevice *native = NULL;
+	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
+
+	native = G_UDEV_DEVICE (up_device_get_native (device));
+
+	/* if the charge_control_start_threshold or charge_control_end_threshold is found,
+	 * then the charge threshold is not controlled by charge_types. */
+	if (g_udev_device_has_sysfs_attr (native, "charge_control_start_threshold") ||
+	    g_udev_device_has_sysfs_attr (native, "charge_control_end_threshold"))
+		return FALSE;
+
+	if (self->supported_charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE) {
+		if (self->supported_charge_types & (UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD |
+		    				    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE |
+		    				    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)) {
+			g_debug ("charge_control_start_threshold and charge_control_end_threshold are not found but the supported charge_types Long_lift, Standard or Adaptive was found. Assuming charging threshold is supported");
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 static gboolean
 up_device_supply_battery_refresh (UpDevice *device,
 				  UpRefreshReason reason)
@@ -392,6 +428,20 @@ up_device_supply_battery_refresh (UpDevice *device,
 	} else {
 		info.charge_control_enabled = FALSE;
 		info.charge_control_supported = FALSE;
+	}
+
+	/* refresh the changes of charge_types */
+	up_device_battery_get_supported_charge_types (device);
+
+	/* Test charge_types attribute, if "Long_Life", "Standard", "Adaptive" or "Fast" are found,
+	 * then set charge_control_supported to TRUE.
+	 *
+	 * Co-work-with: Cursor
+	 * Reviewed-by: Kate Hsuan <hpa@redhat.com> */
+	if (up_device_supply_battery_is_charge_threshold_by_charge_type (device)) {
+		g_debug ("charge_types attribute is found, set charge_control_supported to TRUE");
+		info.charge_control_supported = TRUE;
+		self->charge_threshold_by_charge_type = TRUE;
 	}
 
 	/* NOTE: We used to warn about full > design, but really that is perfectly fine to happen. */
@@ -461,9 +511,6 @@ up_device_supply_battery_refresh (UpDevice *device,
 		values.state = UP_DEVICE_STATE_DISCHARGING;
 
 	values.temperature = g_udev_device_get_sysfs_attr_as_double_uncached (native, "temp") / 10.0;
-
-	/* refresh the changes of charge_types */
-	up_device_battery_get_supported_charge_types (device);
 
 	up_device_battery_report (battery, &values, reason);
 
