@@ -354,8 +354,8 @@ up_device_supply_battery_is_charge_threshold_by_charge_type (UpDevice *device) {
 
 	if (self->supported_charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE) {
 		if (self->supported_charge_types & (UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD |
-		    				    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE |
-		    				    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)) {
+						    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE |
+						    UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)) {
 			g_debug ("charge_control_start_threshold and charge_control_end_threshold are not found but the supported charge_types Long_lift, Standard or Adaptive was found. Assuming charging threshold is supported");
 			return TRUE;
 		}
@@ -661,6 +661,7 @@ static gboolean
 up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint start, guint end, GError **error) {
 	guint err_count = 0;
 	GUdevDevice *native;
+	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
 	g_autofree gchar *native_path = NULL;
 	g_autofree gchar *start_filename = NULL;
 	g_autofree gchar *end_filename = NULL;
@@ -672,6 +673,24 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 	native_path = up_device_supply_device_path (native);
 	start_filename = g_build_filename (native_path, "charge_control_start_threshold", NULL);
 	end_filename = g_build_filename (native_path, "charge_control_end_threshold", NULL);
+
+	/* if the charge threshold is controlled by charge_types,
+	 * the charge_types will be set to Long_life when enabling the charge threshold.
+	 * the charge_types will be set to Standard/Adaptive/Fast when disabling the charge threshold. */
+	if (self->charge_threshold_by_charge_type) {
+		if (start == 0 && end == 100) {
+			charge_type_enum = up_device_battery_charge_find_available_charge_types_for_charging (device);
+			up_device_supply_battery_set_battery_charge_types (device,
+									   charge_type_enum,
+									   NULL);
+		} else {
+			up_device_supply_battery_set_battery_charge_types (device,
+									   UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE,
+									   NULL);
+		}
+
+		return TRUE;
+	}
 
 	if (start != G_MAXUINT) {
 		g_string_printf (start_str, "%d", CLAMP (start, 0, 100));
