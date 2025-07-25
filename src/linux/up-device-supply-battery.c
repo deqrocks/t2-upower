@@ -46,18 +46,18 @@ enum {
 };
 
 typedef enum {
-	CHARGE_TYPES_0,
-	CHARGE_TYPES_UNKNOWN = 1 << 0,
-	CHARGE_TYPES_NA = 1 << 1,
-	CHARGE_TYPES_TRICKLE = 1 << 2,
-	CHARGE_TYPES_FAST = 1 << 3,
-	CHARGE_TYPES_STANDARD = 1 << 4,
-	CHARGE_TYPES_ADAPTIVE = 1 << 5,
-	CHARGE_TYPES_CUSTOM = 1 << 6,
-	CHARGE_TYPES_LONG_LIFE = 1 << 7,
-	CHARGE_TYPES_BYPASS = 1 << 8,
-	CHARGE_TYPE_LAST,
-} DeviceBatteryChargeTypes;
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_0,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_UNKNOWN = 1 << 0,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_NA = 1 << 1,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_TRICKLE = 1 << 2,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST = 1 << 3,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD = 1 << 4,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE = 1 << 5,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_CUSTOM = 1 << 6,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE = 1 << 7,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_BYPASS = 1 << 8,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPE_LAST,
+} UpDeviceSupplyBatteryChargeTypes;
 
 struct _UpDeviceSupplyBattery
 {
@@ -68,7 +68,7 @@ struct _UpDeviceSupplyBattery
 	guint			 energy_old_first;
 	gdouble			 rate_old;
 	guint			 supported_charge_types;
-	DeviceBatteryChargeTypes charge_type;
+	UpDeviceSupplyBatteryChargeTypes charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
 };
@@ -219,84 +219,84 @@ remove_brackets (const gchar *type)
 	return g_string_free (washed_type, FALSE);
 }
 
-static DeviceBatteryChargeTypes
+static UpDeviceSupplyBatteryChargeTypes
 up_device_battery_charge_type_str_to_enum (const gchar *type)
 {
 	if (type == NULL)
-		return CHARGE_TYPE_LAST;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPE_LAST;
 
 	if (!g_strcmp0 ("Unknown", type))
-		return CHARGE_TYPES_UNKNOWN;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_UNKNOWN;
 	else if (!g_strcmp0 ("N/A", type))
-		return CHARGE_TYPES_NA;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_NA;
 	else if (!g_strcmp0 ("Trickle", type))
-		return CHARGE_TYPES_TRICKLE;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_TRICKLE;
 	else if (!g_strcmp0 ("Fast", type))
-		return CHARGE_TYPES_FAST;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST;
 	else if (!g_strcmp0 ("Standard", type))
-		return CHARGE_TYPES_STANDARD;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD;
 	else if (!g_strcmp0 ("Adaptive", type))
-		return CHARGE_TYPES_ADAPTIVE;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE;
 	else if (!g_strcmp0 ("Custom", type))
-		return CHARGE_TYPES_CUSTOM;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_CUSTOM;
 	else if (!g_strcmp0 ("Long_Life", type))
-		return CHARGE_TYPES_LONG_LIFE;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE;
 	else if (!g_strcmp0 ("Bypass", type))
-		return CHARGE_TYPES_BYPASS;
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_BYPASS;
 
 	/* invalid type */
-	return CHARGE_TYPE_LAST;
+	return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPE_LAST;
 }
 
 static gchar *
-up_device_battery_charge_type_enum_to_str (DeviceBatteryChargeTypes types)
+up_device_battery_charge_type_enum_to_str (UpDeviceSupplyBatteryChargeTypes types)
 {
-	if (types == CHARGE_TYPES_UNKNOWN)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_UNKNOWN)
 		return g_strdup ("Unknown");
 
-	if (types == CHARGE_TYPES_NA)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_NA)
 		return g_strdup ("N/A");
 
-	if (types == CHARGE_TYPES_TRICKLE)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_TRICKLE)
 		return g_strdup ("Trickle");
 
-	if (types == CHARGE_TYPES_FAST)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)
 		return g_strdup ("Fast");
 
-	if (types == CHARGE_TYPES_STANDARD)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD)
 		return g_strdup ("Standard");
 
-	if (types == CHARGE_TYPES_ADAPTIVE)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE)
 		return g_strdup ("Adaptive");
 
-	if (types == CHARGE_TYPES_CUSTOM)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_CUSTOM)
 		return g_strdup ("Custom");
 
-	if (types == CHARGE_TYPES_LONG_LIFE)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_LONG_LIFE)
 		return g_strdup ("Long_Life");
 
-	if (types == CHARGE_TYPES_BYPASS)
+	if (types == UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_BYPASS)
 		return g_strdup ("Bypass");
 
 	/* invalid type */
 	return g_strdup ("Unknown");
 }
 
-static DeviceBatteryChargeTypes
+static UpDeviceSupplyBatteryChargeTypes
 up_device_battery_charge_find_available_charge_types_for_charging (UpDevice *device) {
 	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
-	DeviceBatteryChargeTypes charge_types = self->supported_charge_types;
+	UpDeviceSupplyBatteryChargeTypes charge_types = self->supported_charge_types;
 
-	if (charge_types & CHARGE_TYPES_FAST)
-		return CHARGE_TYPES_FAST;
+	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST)
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_FAST;
 
-	if (charge_types & CHARGE_TYPES_STANDARD)
-		return CHARGE_TYPES_STANDARD;
+	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD)
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_STANDARD;
 
-	if (charge_types & CHARGE_TYPES_ADAPTIVE)
-		return CHARGE_TYPES_ADAPTIVE;
+	if (charge_types & UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE)
+		return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_ADAPTIVE;
 
-	return CHARGE_TYPE_LAST;
+	return UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPE_LAST;
 }
 
 static void
@@ -565,7 +565,7 @@ up_device_supply_device_path (GUdevDevice *device)
 static gboolean
 up_device_supply_battery_is_charge_type_exist (UpDevice *device, const gchar *charge_type) {
 	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
-	DeviceBatteryChargeTypes type;
+	UpDeviceSupplyBatteryChargeTypes type;
 
 	type = up_device_battery_charge_type_str_to_enum (charge_type);
 
@@ -576,12 +576,17 @@ up_device_supply_battery_is_charge_type_exist (UpDevice *device, const gchar *ch
 }
 
 static gboolean
-up_device_supply_battery_set_battery_charge_types (UpDevice *device, const gchar *charge_type, GError **error) {
+up_device_supply_battery_set_battery_charge_types (UpDevice *device,
+						   UpDeviceSupplyBatteryChargeTypes charge_type,
+						   GError **error) {
 	GUdevDevice *native;
+	g_autofree gchar *charge_type_str = NULL;
 	g_autofree gchar *native_path = NULL;
 	g_autofree gchar *type_filename = NULL;
 
 	native = G_UDEV_DEVICE (up_device_get_native (device));
+
+	charge_type_str = up_device_battery_charge_type_enum_to_str (charge_type);
 
 	/* return, if the attribute "charge_types" is not found */
 	if (!g_udev_device_has_sysfs_attr (native, "charge_types"))
@@ -590,10 +595,12 @@ up_device_supply_battery_set_battery_charge_types (UpDevice *device, const gchar
 	native_path = up_device_supply_device_path (native);
 	type_filename = g_build_filename (native_path, "charge_types", NULL);
 
-	if (!up_device_supply_battery_is_charge_type_exist (device, charge_type))
+	if (!up_device_supply_battery_is_charge_type_exist (device, charge_type_str)) {
+		g_debug ("charge_type %s is not supported, skip setting", charge_type_str);
 		return TRUE;
+	}
 
-	if (!g_file_set_contents_full (type_filename, charge_type, -1,
+	if (!g_file_set_contents_full (type_filename, charge_type_str, -1,
 		G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, error)) {
 		g_set_error_literal (error, G_IO_ERROR,
 				     G_IO_ERROR_FAILED, "Failed to set charge_types");
@@ -610,10 +617,9 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 	g_autofree gchar *native_path = NULL;
 	g_autofree gchar *start_filename = NULL;
 	g_autofree gchar *end_filename = NULL;
-	g_autofree gchar *charge_type_str = NULL;
 	g_autoptr (GString) start_str = g_string_new (NULL);
 	g_autoptr (GString) end_str = g_string_new (NULL);
-	DeviceBatteryChargeTypes charge_type_enum;
+	UpDeviceSupplyBatteryChargeTypes charge_type_enum;
 
 	native = G_UDEV_DEVICE (up_device_get_native (device));
 	native_path = up_device_supply_device_path (native);
@@ -648,13 +654,14 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 
 	if (start == 0 && end == 100) {
 		charge_type_enum = up_device_battery_charge_find_available_charge_types_for_charging (device);
-		charge_type_str = up_device_battery_charge_type_enum_to_str (charge_type_enum);
-
-		up_device_supply_battery_set_battery_charge_types (device, charge_type_str, NULL);
-
+		up_device_supply_battery_set_battery_charge_types (device,
+								   charge_type_enum,
+								   NULL);
 	} else {
 		/* for the Dell laptops, the charge_types has to be set to "Custom" to enable the charging threshold */
-		up_device_supply_battery_set_battery_charge_types (device, "Custom", NULL);
+		up_device_supply_battery_set_battery_charge_types (device,
+								   UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPES_CUSTOM,
+								   NULL);
 	}
 
 	return TRUE;
