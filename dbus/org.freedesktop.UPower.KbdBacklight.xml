@@ -11,6 +11,12 @@
           org.freedesktop.UPower.KbdBacklight is a DBus interface implemented
           by UPower.
 	  It allows the keyboard backlight (if present) to be controlled.
+
+          The object path "/org/freedesktop/UPower/KbdBacklight" is going to be deprecated in the future.
+          The new object path is based on this, but the suffix of the path is the device name.
+          For example:
+          The interface is: org.freedesktop.UPower.KbdBacklight
+          The object path will be: /org/freedesktop/UPower/KbdBacklight/tpacpiookbd_backlight
         </doc:para>
       </doc:description>
     </doc:doc>
