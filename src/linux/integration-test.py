@@ -4753,8 +4753,11 @@ class Tests(dbusmock.DBusTestCase):
     def test_bluetooth_hidpp_mouse(self):
         """Logitech Bluetooth LE mouse with HID++ kernel support"""
 
+        # Both sleep to ensure that bluez and upower are fully started
         self.start_bluez()
+        time.sleep(5)
         self.start_daemon()
+        time.sleep(5)
 
         udevs = []
 
@@ -4816,8 +4819,6 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(len(devs), 1)
         bat0_up = devs[0]
 
-        time.sleep(5)
-
         # Check we have the Bluetooth name
         self.assertEventually(
             lambda: self.get_dbus_dev_property(bat0_up, "Model"), value=alias
@@ -4856,7 +4857,7 @@ class Tests(dbusmock.DBusTestCase):
         adapter = self.dbus_con.get_object("org.bluez", "/org/bluez/hci0")
         adapter.RemoveDevice(bluez_dev_path)
 
-        time.sleep(0.5)
+        time.sleep(2)
         devs = self.proxy.EnumerateDevices()
         self.assertEqual(len(devs), 0)
 
