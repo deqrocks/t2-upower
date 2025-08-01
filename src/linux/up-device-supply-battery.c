@@ -59,6 +59,14 @@ typedef enum {
 	UP_DEVICE_SUPPLY_BATTERY_CHARGE_TYPE_LAST,
 } UpDeviceSupplyBatteryChargeTypes;
 
+typedef enum {
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_0,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_START_THRESHOLD = 1 << 0,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_END_THRESHOLD = 1 << 1,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_TYPES = 1 << 2,
+	UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_LAST,
+} UpDeviceSupplyBatteryChargeThresholdSettings;
+
 struct _UpDeviceSupplyBattery
 {
 	UpDeviceBattery		 parent;
@@ -69,6 +77,7 @@ struct _UpDeviceSupplyBattery
 	gdouble			 rate_old;
 	guint			 supported_charge_types;
 	UpDeviceSupplyBatteryChargeTypes charge_type;
+	UpDeviceSupplyBatteryChargeThresholdSettings charge_threshold_settings;
 	gboolean		 charge_threshold_by_charge_type;
 	gboolean		 shown_invalid_voltage_warning;
 	gboolean		 ignore_system_percentage;
@@ -199,6 +208,11 @@ up_device_supply_battery_get_charge_control_limits (GUdevDevice *native, UpBatte
 	info->charge_control_start_threshold = charge_control_start_threshold;
 	info->charge_control_end_threshold = charge_control_end_threshold;
 
+	if (g_udev_device_has_sysfs_attr (native, "charge_control_start_threshold"))
+		info->charge_threshold_settings |= UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_START_THRESHOLD;
+	if (g_udev_device_has_sysfs_attr (native, "charge_control_end_threshold"))
+		info->charge_threshold_settings |= UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_CONTROL_END_THRESHOLD;
+
 	return TRUE;
 }
 
@@ -301,7 +315,7 @@ up_device_battery_charge_find_available_charge_types_for_charging (UpDevice *dev
 }
 
 static void
-up_device_battery_get_supported_charge_types (UpDevice *device)
+up_device_battery_get_supported_charge_types (UpDevice *device, UpBatteryInfo *info)
 {
 	UpDeviceSupplyBattery *self = UP_DEVICE_SUPPLY_BATTERY (device);
 	GUdevDevice *native;
@@ -315,6 +329,8 @@ up_device_battery_get_supported_charge_types (UpDevice *device)
 
 	if (charge_type_str == NULL)
 		return;
+
+	info->charge_threshold_settings |= UP_DEVICE_SUPPLY_BATTERY_CHARGE_THRESHOLD_SETTINGS_CHARGE_TYPES;
 
 	types = g_strsplit (charge_type_str, " ", 0);
 	for (int i = 0; i < g_strv_length(types); i++) {
@@ -431,7 +447,7 @@ up_device_supply_battery_refresh (UpDevice *device,
 	}
 
 	/* refresh the changes of charge_types */
-	up_device_battery_get_supported_charge_types (device);
+	up_device_battery_get_supported_charge_types (device, &info);
 
 	/* Test charge_types attribute, if "Long_Life", "Standard", "Adaptive" or "Fast" are found,
 	 * then set charge_control_supported to TRUE.
