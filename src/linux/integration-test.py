@@ -416,6 +416,7 @@ class Tests(dbusmock.DBusTestCase):
         """DaemonVersion property"""
 
         self.start_daemon()
+        time.sleep(2)
         self.assertEqual(self.proxy.EnumerateDevices(), [])
         self.assertRegex(self.get_dbus_property("DaemonVersion"), "^[0-9.]+$")
 
@@ -4753,23 +4754,7 @@ class Tests(dbusmock.DBusTestCase):
     def test_bluetooth_hidpp_mouse(self):
         """Logitech Bluetooth LE mouse with HID++ kernel support"""
 
-        # Both sleep to ensure that bluez and upower are fully started
-        self.start_bluez()
-        time.sleep(5)
-        self.start_daemon()
-        time.sleep(5)
-
         udevs = []
-
-        # Add Bluetooth LE device
-        alias = "Logitech Bluetooth Name"
-        battery_level = 99
-        device_properties = {"Appearance": dbus.UInt16(0x03C2, variant_level=1)}
-
-        devs = self._add_bluez_battery_device(alias, device_properties, battery_level)
-        bluez_dev_path = "/org/bluez/hci0/dev_11_22_33_44_AA_BB"
-        self.assertEqual(len(devs), 1)
-
         # Add HID++ kernel device
         parent = self.testbed.add_device(
             "usb", "pci0000:00/0000:00:14.0/usb3/3-10/3-10:1.2", None, [], []
@@ -4815,6 +4800,22 @@ class Tests(dbusmock.DBusTestCase):
             [],
         )
         udevs.insert(0, _dev)
+
+        # Both sleep to ensure that bluez and upower are fully started
+        self.start_bluez()
+        time.sleep(5)
+        self.start_daemon()
+        time.sleep(5)
+
+        # Add Bluetooth LE device
+        alias = "Logitech Bluetooth Name"
+        battery_level = 99
+        device_properties = {"Appearance": dbus.UInt16(0x03C2, variant_level=1)}
+
+        devs = self._add_bluez_battery_device(alias, device_properties, battery_level)
+        bluez_dev_path = "/org/bluez/hci0/dev_11_22_33_44_AA_BB"
+        self.assertEqual(len(devs), 1)
+
         devs = self.proxy.EnumerateDevices()
         self.assertEqual(len(devs), 1)
         bat0_up = devs[0]
@@ -5120,6 +5121,7 @@ class Tests(dbusmock.DBusTestCase):
         for i in range(10):
             # Replace daemon
             self.start_daemon()
+            time.sleep(2)
 
             self.testbed.uevent(bat, "change")
 
