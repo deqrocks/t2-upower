@@ -894,6 +894,26 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
       </doc:doc>
     </property>
 
+    <property name="ChargeThresholdSettingsSupported" type="u" access="read">
+      <doc:doc>
+        <doc:description>
+          <doc:para>The types of settings for charge thresholds that are supported. The value is a bitmask value and it is the sum of the supported types.</doc:para>
+          <doc:list>
+            <doc:item>
+              <doc:term>1</doc:term><doc:definition>The system supports charge start threshold. The battery discharges to a percentage, then starts charging.</doc:definition>
+            </doc:item>
+            <doc:item>
+              <doc:term>2</doc:term><doc:definition>The system supports charge end threshold. The battery charges to a percentage, then stops charging.</doc:definition>
+            </doc:item>
+            <doc:item>
+              <doc:term>4</doc:term><doc:definition>The system supports optimized charging behaviors controlled by the system firmware.</doc:definition>
+            </doc:item>
+          </doc:list>
+          <doc:para>Examples:</doc:para>
+          <doc:para>If the system supports charge start threshold and charge end threshold, the value is 3. If the system supports charge end threshold and the battery charging behavior is controlled by the system firmware, the value is 6.</doc:para>
+        </doc:description>
+      </doc:doc>
+    </property>
     <property name="VoltageMinDesign" type="d" access="read">
       <doc:doc>
         <doc:description>
