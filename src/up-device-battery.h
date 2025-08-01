@@ -98,6 +98,7 @@ typedef struct {
 	gboolean charge_control_supported;
 	guint charge_control_start_threshold;
 	guint charge_control_end_threshold;
+	guint charge_threshold_settings;
 } UpBatteryInfo;
 
 
