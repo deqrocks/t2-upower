@@ -2276,6 +2276,144 @@ class Tests(dbusmock.DBusTestCase):
         with open(f"/sys/class/power_supply/{battery_name}/charge_types") as fp:
             self.assertEqual(fp.read(), "Fast")
 
+    def test_battery_charge_limit_multiple_batteries_get_charge_threshold_settings_supported(
+        self,
+    ):
+        """Shows the charge_threshold_settings_supported property"""
+
+        if not self.polkit:
+            self.start_polkitd({})
+        self.polkit_obj.SetAllowed(["org.freedesktop.UPower.enable-charging-limit"])
+
+        bat0 = self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_types",
+                "[Standard] Long_Life",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT0", "CHARGE_LIMIT", "70,80"
+        )
+
+        bat1 = self.testbed.add_device(
+            "power_supply",
+            "BAT1",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_start_threshold",
+                "0",
+                "charge_control_end_threshold",
+                "100",
+                "charge_types",
+                "[Standard] Long_Life Fast Adaptive",
+            ],
+            [],
+        )
+
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT1", "CHARGE_LIMIT", "70,80"
+        )
+
+        bat2 = self.testbed.add_device(
+            "power_supply",
+            "BAT2",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "unknown",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "48000000",
+                "voltage_now",
+                "12000000",
+                "charge_control_end_threshold",
+                "0",
+                "charge_types",
+                "[Standard] Long_Life Fast Adaptive",
+            ],
+            [],
+        )
+        self.testbed.set_property(
+            "/sys/class/power_supply/BAT2", "CHARGE_LIMIT", "70,80"
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 3)
+        bat0_up = devs[0]
+        bat1_up = devs[1]
+        bat2_up = devs[2]
+
+        for bat in [bat0_up, bat1_up, bat2_up]:
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdSupported"), True
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeThresholdEnabled"), False
+            )
+            self.assertEqual(
+                self.get_dbus_dev_property(bat, "ChargeStartThreshold"), 70
+            )
+            self.assertEqual(self.get_dbus_dev_property(bat, "ChargeEndThreshold"), 80)
+
+        # Battery 0
+        # Only charge_types is supported, the expected value is 4
+        self.assertEqual(
+            self.get_dbus_dev_property(bat0_up, "ChargeThresholdSettingsSupported"), 4
+        )
+        # Battery 1
+        # charge_types, charge_control_start_threshold and charge_control_end_threshold are supported,
+        # the expected value is 7
+        self.assertEqual(
+            self.get_dbus_dev_property(bat1_up, "ChargeThresholdSettingsSupported"), 7
+        )
+        # Battery 2
+        # charge_types and charge_control_end_threshold is supported,
+        # the expected value is 6
+        self.assertEqual(
+            self.get_dbus_dev_property(bat2_up, "ChargeThresholdSettingsSupported"), 6
+        )
+        self.stop_daemon()
+
     def test_battery_charge_limit_multiple_batteries_polkit_not_allowed(self):
         """Battery with charge limits with multiple batteries, but polkit isn't allowed"""
 
