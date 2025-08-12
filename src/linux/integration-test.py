@@ -520,7 +520,7 @@ class Tests(dbusmock.DBusTestCase):
         else:
             (ac_up, bat0_up) = devs
 
-        self.assertAlmostEqual(self.get_dbus_dev_property(bat0_up, "Percentage"), 80)
+        self.assertAlmostEqual(self.get_dbus_dev_property(bat0_up, "Percentage"), 80.0)
 
     def test_macbook_uevent(self):
         """MacBooks sent uevent 5 seconds before battery updates"""
@@ -3513,7 +3513,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(bat0, "change")
 
         time.sleep(0.5)
-        self.assertAlmostEqual(self.get_dbus_display_property("Percentage"), 1)
+        self.assertAlmostEqual(self.get_dbus_display_property("Percentage"), 1.0)
 
         self.daemon_log.check_line("saving to disk earlier due to low power")
         self.daemon_log.check_line(
@@ -3525,7 +3525,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(bat0, "change")
 
         time.sleep(0.5)
-        self.assertAlmostEqual(self.get_dbus_display_property("Percentage"), 100)
+        self.assertAlmostEqual(self.get_dbus_display_property("Percentage"), 100.0)
 
         # The 5 seconds were not up yet, and the shorter timeout sticks
         self.daemon_log.check_line("deferring as earlier timeout is already queued")
@@ -3815,7 +3815,7 @@ class Tests(dbusmock.DBusTestCase):
             self.get_dbus_dev_property(mousebat0_up, "Model"), "Fancy BT mouse"
         )
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30.0
         )
         self.assertEqual(self.get_dbus_dev_property(mousebat0_up, "PowerSupply"), False)
         self.assertEqual(
@@ -3918,7 +3918,7 @@ class Tests(dbusmock.DBusTestCase):
 
         mb1_up = devs_after[0]
         self.assertEqual(self.get_dbus_dev_property(mb1_up, "Model"), "Fancy BT mouse")
-        self.assertAlmostEqual(self.get_dbus_dev_property(mb1_up, "Percentage"), 20)
+        self.assertAlmostEqual(self.get_dbus_dev_property(mb1_up, "Percentage"), 20.0)
         self.assertEqual(self.get_dbus_dev_property(mb1_up, "PowerSupply"), False)
         self.stop_daemon()
 
@@ -3986,7 +3986,7 @@ class Tests(dbusmock.DBusTestCase):
             self.get_dbus_dev_property(mousebat0_up, "Model"), "Fancy Logitech mouse"
         )
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30.0
         )
         self.assertEqual(self.get_dbus_dev_property(mousebat0_up, "PowerSupply"), False)
         self.assertEqual(
@@ -4335,7 +4335,7 @@ class Tests(dbusmock.DBusTestCase):
 
         # Now test all the levels
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4433,7 +4433,7 @@ class Tests(dbusmock.DBusTestCase):
 
         # Now test all the levels
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4444,7 +4444,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(dev, "change")
         time.sleep(0.5)
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 5
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 5.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4459,7 +4459,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(dev, "change")
         time.sleep(0.5)
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 10
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 10.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4474,7 +4474,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(dev, "change")
         time.sleep(0.5)
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 70
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 70.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4485,7 +4485,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(dev, "change")
         time.sleep(0.5)
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 55
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 55.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4516,7 +4516,7 @@ class Tests(dbusmock.DBusTestCase):
         self.testbed.uevent(dev, "change")
         time.sleep(0.5)
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 100.0
         )
         self.assertEqual(
             self.get_dbus_dev_property(mousebat0_up, "BatteryLevel"),
@@ -4594,7 +4594,7 @@ class Tests(dbusmock.DBusTestCase):
             self.get_dbus_dev_property(mousebat0_up, "Model"), "Fancy BT mouse"
         )
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30.0
         )
         self.assertEqual(self.get_dbus_dev_property(mousebat0_up, "PowerSupply"), False)
         self.assertEqual(
@@ -4698,7 +4698,7 @@ class Tests(dbusmock.DBusTestCase):
             self.get_dbus_dev_property(mousebat0_up, "Model"), "Fancy BT mouse"
         )
         self.assertAlmostEqual(
-            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30
+            self.get_dbus_dev_property(mousebat0_up, "Percentage"), 30.0
         )
         self.assertEqual(self.get_dbus_dev_property(mousebat0_up, "PowerSupply"), False)
         self.assertEqual(
@@ -4757,7 +4757,9 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(
             self.get_dbus_dev_property(kbdbat0_up, "Model"), "Monster Typist"
         )
-        self.assertAlmostEqual(self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40)
+        self.assertAlmostEqual(
+            self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40.0
+        )
         self.assertEqual(self.get_dbus_dev_property(kbdbat0_up, "PowerSupply"), False)
         self.assertEqual(
             self.get_dbus_dev_property(kbdbat0_up, "Type"), UP_DEVICE_KIND_KEYBOARD
@@ -4822,7 +4824,9 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(
             self.get_dbus_dev_property(kbdbat0_up, "Model"), "Monster Mouse"
         )
-        self.assertAlmostEqual(self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40)
+        self.assertAlmostEqual(
+            self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40.0
+        )
         self.assertEqual(self.get_dbus_dev_property(kbdbat0_up, "PowerSupply"), False)
         self.assertEqual(
             self.get_dbus_dev_property(kbdbat0_up, "Type"), UP_DEVICE_KIND_MOUSE
@@ -4889,7 +4893,9 @@ class Tests(dbusmock.DBusTestCase):
             self.get_dbus_dev_property(kbdbat0_up, "Model"),
             "Monster Typist Mouse/Keyboard Combo",
         )
-        self.assertAlmostEqual(self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40)
+        self.assertAlmostEqual(
+            self.get_dbus_dev_property(kbdbat0_up, "Percentage"), 40.0
+        )
         self.assertEqual(self.get_dbus_dev_property(kbdbat0_up, "PowerSupply"), False)
         self.assertEqual(
             self.get_dbus_dev_property(kbdbat0_up, "Type"), UP_DEVICE_KIND_KEYBOARD
@@ -5184,7 +5190,7 @@ class Tests(dbusmock.DBusTestCase):
         )
         self.assertEqual(self.get_dbus_dev_property(bat0_up, "Model"), alias)
         # Check we have the kernel percentage
-        self.assertAlmostEqual(self.get_dbus_dev_property(bat0_up, "Percentage"), 30)
+        self.assertAlmostEqual(self.get_dbus_dev_property(bat0_up, "Percentage"), 30.0)
         self.assertEqual(self.get_dbus_dev_property(bat0_up, "PowerSupply"), False)
         self.assertEqual(
             self.get_dbus_dev_property(bat0_up, "Type"), UP_DEVICE_KIND_MOUSE
