@@ -320,8 +320,13 @@ uevent_signal_handler_cb (UpEnumeratorUdev *self,
 	if (g_strcmp0 (g_udev_device_get_subsystem (device), "power_supply") == 0)
 		device_key = g_udev_device_get_name (device);
 
+	/* Consider both 'kbd_backlight' and 'lp5523:kb' as keyboard backlight
+	 * devices. See include/dt-bindings/leds/common.h. 'lp5523:kb' is still
+	 * in use, despite being marked as obsolete/legacy.
+	 */
 	if (g_strcmp0 (g_udev_device_get_subsystem (device), "leds") == 0) {
-		if (g_strrstr (device_key, "kbd_backlight") == NULL)
+		if (g_strrstr (device_key, "kbd_backlight") == NULL &&
+		    g_strrstr (device_key, "lp5523:kb") == NULL)
 			return;
 		is_kbd_backlight = TRUE;
 	}
