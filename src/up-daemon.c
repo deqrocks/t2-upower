@@ -61,6 +61,7 @@ struct UpDaemonPrivate
 	gint64			 time_to_empty;
 	gint64			 time_to_full;
 
+	gboolean		 charge_threshold_enabled;
 	gboolean		 state_all_discharging;
 
 	/* WarningLevel configuration */
@@ -149,6 +150,7 @@ up_daemon_update_display_battery (UpDaemon *daemon)
 	gint64 time_to_empty_total = 0;
 	gint64 time_to_full_total = 0;
 	gboolean is_present_total = FALSE;
+	gboolean charge_threshold_enabled_total = FALSE;
 	guint num_batteries = 0;
 
 	gboolean state_all_discharging = TRUE;
@@ -169,6 +171,7 @@ up_daemon_update_display_battery (UpDaemon *daemon)
 		gint64 time_to_empty = 0;
 		gint64 time_to_full = 0;
 		gboolean power_supply = FALSE;
+		gboolean charge_threshold_enabled = FALSE;
 
 		device = g_ptr_array_index (array, i);
 		g_object_get (device,
@@ -182,6 +185,7 @@ up_daemon_update_display_battery (UpDaemon *daemon)
 			      "time-to-empty", &time_to_empty,
 			      "time-to-full", &time_to_full,
 			      "power-supply", &power_supply,
+			      "charge-threshold-enabled", &charge_threshold_enabled,
 			      NULL);
 
 		if (!present)
@@ -243,6 +247,9 @@ up_daemon_update_display_battery (UpDaemon *daemon)
 			state_all_discharging = FALSE;
 		} else if (state == UP_DEVICE_STATE_DISCHARGING)
 			state_any_discharging = TRUE;
+
+		/* If at least one battery has charge thresholds enabled, propagate that. */
+		charge_threshold_enabled_total = charge_threshold_enabled_total || charge_threshold_enabled;
 
 		/* sum up composite */
 		kind_total = UP_DEVICE_KIND_BATTERY;
@@ -318,6 +325,7 @@ out:
 	    daemon->priv->time_to_empty == time_to_empty_total &&
 	    daemon->priv->time_to_full == time_to_full_total &&
 	    daemon->priv->percentage == percentage_total &&
+	    daemon->priv->charge_threshold_enabled == charge_threshold_enabled_total &&
 	    daemon->priv->state_all_discharging == state_all_discharging)
 		return FALSE;
 
@@ -331,6 +339,7 @@ out:
 
 	daemon->priv->percentage = percentage_total;
 
+	daemon->priv->charge_threshold_enabled = charge_threshold_enabled_total;
 	daemon->priv->state_all_discharging = state_all_discharging;
 
 	g_object_set (daemon->priv->display_device,
@@ -343,6 +352,7 @@ out:
 		      "time-to-full", time_to_full_total,
 		      "percentage", percentage_total,
 		      "is-present", is_present_total,
+		      "charge-threshold-enabled", charge_threshold_enabled_total,
 		      "power-supply", TRUE,
 		      "update-time", (guint64) g_get_real_time () / G_USEC_PER_SEC,
 		      NULL);
