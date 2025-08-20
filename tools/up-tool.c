@@ -181,25 +181,109 @@ up_tool_do_monitor (UpClient *client)
 	return FALSE;
 }
 
+static void
+up_tool_output_daemon (UpClient *client)
+{
+	g_print ("Daemon:\n");
+	up_client_print (client);
+}
+
+static gint
+up_tool_output_display_device (UpClient *client)
+{
+	g_autoptr (UpDevice) device = NULL;
+	g_autofree gchar *text = NULL;
+
+	device = up_client_get_display_device (client);
+	if (!device) {
+		g_print ("Failed to get display device\n");
+		return 1;
+	}
+
+	g_print ("Device: %s\n", up_device_get_object_path (device));
+	text = up_device_to_text (device);
+	g_print ("%s\n", text);
+
+	return 0;
+}
+
+static gint
+up_tool_output_device_dump (UpClient *client, GList *device_filter)
+{
+	g_autoptr (GPtrArray) devices = NULL;
+	UpDevice *device;
+	guint i;
+	guint kind = 0;
+	gint ret = 0;
+	gchar *text = NULL;
+
+	devices = up_client_get_devices2 (client);
+	if (!devices) {
+		g_print ("Failed to get device list\n");
+		return 1;
+	}
+
+	for (i=0; i < devices->len; i++) {
+		device = (UpDevice*) g_ptr_array_index (devices, i);
+		g_object_get (device, "kind", &kind, NULL);
+		if (g_list_find (device_filter, GINT_TO_POINTER (kind)) || device_filter == NULL) {
+			g_print ("Device: %s\n", up_device_get_object_path (device));
+			text = up_device_to_text (device);
+			g_print ("%s\n", text);
+			g_free (text);
+		}
+	}
+
+	if (device_filter == NULL) {
+		ret = up_tool_output_display_device (client);
+		up_tool_output_daemon (client);
+	}
+
+	return ret;
+}
+
+static gint
+up_tool_output_enumerate (UpClient *client)
+{
+	g_autoptr (GPtrArray) devices = NULL;
+	g_autoptr (UpDevice) display_device = NULL;
+	UpDevice *device;
+	guint i;
+
+	devices = up_client_get_devices2 (client);
+	for (i = 0; i < devices->len; i++) {
+		device = (UpDevice*) g_ptr_array_index (devices, i);
+		g_print ("%s\n", up_device_get_object_path (device));
+	}
+
+	display_device = up_client_get_display_device (client);
+	if (display_device == NULL) {
+		g_print ("Failed to get display device\n");
+		return 1;
+	}
+	g_print ("%s\n", up_device_get_object_path (display_device));
+	return 0;
+}
+
 /**
  * main:
  **/
 int
 main (int argc, char **argv)
 {
-	gint retval = EXIT_FAILURE;
-	guint i;
 	GOptionContext *context;
 	gboolean opt_dump = FALSE;
 	gboolean opt_enumerate = FALSE;
 	gboolean opt_monitor = FALSE;
 	gchar *opt_show_info = FALSE;
 	gboolean opt_version = FALSE;
+	GList *device_filter = NULL;
 	gboolean ret;
+	gint retval;
 	GError *error = NULL;
 	gchar *text = NULL;
 
-	UpClient *client;
+	g_autoptr (UpClient) client = NULL;
 	UpDevice *device;
 
 	const GOptionEntry entries[] = {
@@ -236,64 +320,29 @@ main (int argc, char **argv)
 	}
 
 	if (opt_version) {
-		gchar *daemon_version;
+		g_autofree gchar *daemon_version = NULL;
 		g_object_get (client,
 			      "daemon-version", &daemon_version,
 			      NULL);
 		g_print ("UPower client version %s\n"
 			 "UPower daemon version %s\n",
 			 PACKAGE_VERSION, daemon_version);
-		g_free (daemon_version);
-		retval = 0;
-		goto out;
+		return EXIT_SUCCESS;
 	}
 
-	if (opt_enumerate || opt_dump) {
-		GPtrArray *devices;
-		devices = up_client_get_devices2 (client);
-		if (!devices) {
-			g_print ("Failed to get device list\n");
-			goto out;
-		}
-		for (i=0; i < devices->len; i++) {
-			device = (UpDevice*) g_ptr_array_index (devices, i);
-			if (opt_enumerate) {
-				g_print ("%s\n", up_device_get_object_path (device));
-			} else {
-				g_print ("Device: %s\n", up_device_get_object_path (device));
-				text = up_device_to_text (device);
-				g_print ("%s\n", text);
-				g_free (text);
-			}
-		}
-		g_ptr_array_unref (devices);
-		device = up_client_get_display_device (client);
-		if (!device) {
-			g_print ("Failed to get display device\n");
-			goto out;
-		}
-		if (opt_enumerate) {
-			g_print ("%s\n", up_device_get_object_path (device));
-		} else {
-			g_print ("Device: %s\n", up_device_get_object_path (device));
-			text = up_device_to_text (device);
-			g_print ("%s\n", text);
-			g_free (text);
-		}
-		g_object_unref (device);
-		if (opt_dump) {
-			g_print ("Daemon:\n");
-			up_client_print (client);
-		}
-		retval = EXIT_SUCCESS;
-		goto out;
+	if (opt_enumerate)
+		return up_tool_output_enumerate (client);
+
+	if (opt_dump) {
+		retval = up_tool_output_device_dump (client, device_filter);
+		g_list_free (device_filter);
+		return retval;
 	}
 
 	if (opt_monitor || opt_monitor_detail) {
 		if (!up_tool_do_monitor (client))
-			goto out;
-		retval = EXIT_SUCCESS;
-		goto out;
+			return EXIT_FAILURE;
+		return EXIT_SUCCESS;
 	}
 
 	if (opt_show_info != NULL) {
@@ -308,10 +357,6 @@ main (int argc, char **argv)
 			g_free (text);
 		}
 		g_object_unref (device);
-		retval = EXIT_SUCCESS;
-		goto out;
+		return EXIT_SUCCESS;
 	}
-out:
-	g_object_unref (client);
-	return retval;
 }
