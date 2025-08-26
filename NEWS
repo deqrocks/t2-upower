@@ -1,3 +1,19 @@
+Version 1.90.10
+--------------
+Released: 2025-08-26
+
+- Fix wrong model name of the devices (!267, #309)
+- Switch charge_types to "Custom" when charging threshold is enabled (!268, #275)
+- Fix invalid command line arguments (!269)
+- Fix leak when reporting daemon usage error (!270)
+- OpenBSD: support battery status from qcpas (!272)
+- Fix history progression (!274, #316)
+- Add a battery filter to the upower command line (!275)
+- Change the charging behaviors using charge_types (!276, !46, #275)
+- Fix integration tests issues, including floating point value and race between umockdev and upower (!277, !278)
+- Rework upower command (!280)
+- Propagate charge-threshold-enabled to display device (!281)
+
 Version 1.90.9
 --------------
 Released: 2025-04-10
