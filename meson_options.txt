@@ -1,10 +1,10 @@
 option('man',
        type : 'boolean',
-       value : 'true',
+       value : true,
        description : 'Build manpages')
 option('gtk-doc',
        type : 'boolean',
-       value : 'true',
+       value : true,
        description : 'Build developer documentation')
 option('introspection',
        type : 'feature',
