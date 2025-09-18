@@ -769,6 +769,8 @@ up_daemon_compute_warning_level (UpDaemon      *daemon,
 				 gdouble        percentage,
 				 gint64         time_to_empty)
 {
+	gboolean can_risky = FALSE;
+	gboolean expect_battery_recalibration = FALSE;
 	gboolean use_percentage = TRUE;
 	UpDeviceLevel default_level = UP_DEVICE_LEVEL_NONE;
 
@@ -789,6 +791,21 @@ up_daemon_compute_warning_level (UpDaemon      *daemon,
 			return UP_DEVICE_LEVEL_NONE;
 	} else if (kind == UP_DEVICE_KIND_UPS) {
 		default_level = UP_DEVICE_LEVEL_DISCHARGING;
+	}
+
+	/* Check if the battery is performing the battery recalibration and
+	 * AC is online, the battery level is UP_DEVICE_LEVEL_NONE. */
+	can_risky = up_config_get_boolean (daemon->priv->config,
+					   "AllowRiskyCriticalPowerAction");
+	expect_battery_recalibration = up_config_get_boolean (daemon->priv->config,
+							      "ExpectBatteryRecalibration");
+
+	if (can_risky && kind == UP_DEVICE_KIND_BATTERY) {
+		if (expect_battery_recalibration &&
+		    up_daemon_get_on_ac_local (daemon, NULL)) {
+			g_debug ("ExpectBatteryRecalibration is enabled and the AC is connected, so the battery level is not critical");
+			return UP_DEVICE_LEVEL_NONE;
+		}
 	}
 
 	if (power_supply &&
