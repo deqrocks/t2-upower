@@ -247,6 +247,7 @@ static void
 up_config_init (UpConfig *config)
 {
 	gboolean allow_risky_critical_action = FALSE;
+	gboolean expect_battery_recalibration = FALSE;
 	g_autofree gchar *critical_action = NULL;
 	g_autoptr (GError) error = NULL;
 	g_autofree gchar *filename = NULL;
@@ -306,6 +307,17 @@ up_config_init (UpConfig *config)
 				   " corruption. The system will perform \"HybridSleep\" instead."
 				   " Use AllowRiskyCriticalPowerAction=true to enable support for"
 				   " risky settings.", critical_action);
+		}
+	}
+
+	expect_battery_recalibration = up_config_get_boolean (config, "ExpectBatteryRecalibration");
+	if (expect_battery_recalibration) {
+		if (allow_risky_critical_action) {
+			g_warning ("The \"ExpectBatteryRecalibration\" setting is considered risky:"
+				   " abrupt power loss due to battery exhaustion may lead to data"
+				   " corruption. The system will unexpected down when the AC is disconnected."
+				   " Use AllowRiskyCriticalPowerAction=false to disable support for"
+				   " risky settings.");
 		}
 	}
 }
