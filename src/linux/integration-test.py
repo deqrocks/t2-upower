@@ -5904,6 +5904,144 @@ class Tests(dbusmock.DBusTestCase):
         # client.get_devices_async(None, get_devices_cb)
         # ml.run()
 
+    def test_conf_d_support(self):
+        """Ensure support for conf.d style directories"""
+
+        base_dir = tempfile.TemporaryDirectory(delete=False, prefix="UPower-")
+        conf_d_dir_path = os.path.join(base_dir.name, "UPower.conf.d")
+
+        # Low, Critical and Action are all needed to avoid fallback to defaults
+        config = tempfile.NamedTemporaryFile(
+            delete=False, mode="w", dir=base_dir.name, suffix=".conf"
+        )
+        config.write("[UPower]\n")
+        config.write("PercentageLow=20.0\n")
+        config.write("PercentageCritical=3.0\n")
+        config.write("PercentageAction=2.0\n")
+        config.write("AllowRiskyCriticalPowerAction=false\n")
+        config.write("CriticalPowerAction=HybridSleep\n")
+        config.close()
+
+        # UPower.conf.d directory does not exist
+        self.start_daemon(cfgfile=config.name)
+        self.daemon_log.check_line(
+            "failed to find files in 'UPower.conf.d': Error opening directory",
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        # empty UPower.conf.d directory
+        conf_d_dir = os.mkdir(path=conf_d_dir_path)
+        self.start_daemon(cfgfile=config.name)
+        self.stop_daemon()
+
+        # override config (in a UPower.conf.d/10-*.conf file)
+        config2 = tempfile.NamedTemporaryFile(
+            delete=False, mode="w", dir=conf_d_dir_path, prefix="10-", suffix=".conf"
+        )
+        config2.write("[UPower]\n")
+        config2.write("AllowRiskyCriticalPowerAction=true\n")
+        config2.write("CriticalPowerAction=Suspend\n")
+        config2.close()
+
+        # check warning message when CriticalPowerAction=Suspend and
+        # AllowRiskyCriticalPowerAction=true, meaning that support of
+        # UPower.conf.d dir is working
+        self.start_daemon(cfgfile=config.name, warns=True)
+        self.daemon_log.check_line(
+            'The "Suspend" CriticalPowerAction setting is considered risky:',
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        # override config (in a UPower.conf.d/90-*.conf file)
+        config3 = tempfile.NamedTemporaryFile(
+            delete=False, mode="w", dir=conf_d_dir_path, prefix="90-", suffix=".conf"
+        )
+        config3.write("[UPower]\n")
+        config3.write("CriticalPowerAction=Ignore\n")
+        config3.close()
+
+        # check warning message when CriticalPowerAction=Ignore and
+        # AllowRiskyCriticalPowerAction=true, meaning that support of
+        # UPower.conf.d dir is working
+        self.start_daemon(cfgfile=config.name, warns=True)
+        self.daemon_log.check_line(
+            'The "Ignore" CriticalPowerAction setting is considered risky:',
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        # config with invalid name 99-*.conf~ file (not actually overriding)
+        config_inv1 = tempfile.NamedTemporaryFile(
+            delete=False, mode="w", dir=conf_d_dir_path, prefix="99-", suffix=".conf~"
+        )
+        config_inv1.write("[UPower]\n")
+        config_inv1.write("CriticalPowerAction=HybridSleep\n")
+        config_inv1.close()
+
+        # check warning message when CriticalPowerAction=Ignore and
+        # AllowRiskyCriticalPowerAction=true, because the config file
+        # (config_inv1) setting it to the safe 'HybridSleep' is not activated
+        # due to wrong name
+        self.start_daemon(cfgfile=config.name, warns=True)
+        self.daemon_log.check_line(
+            'The "Ignore" CriticalPowerAction setting is considered risky:',
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        # config with invalid name 999-*.conf file (not actually overriding)
+        config_inv2 = tempfile.NamedTemporaryFile(
+            delete=False, mode="w", dir=conf_d_dir_path, prefix="999-", suffix=".conf"
+        )
+        config_inv2.write("[UPower]\n")
+        config_inv2.write("CriticalPowerAction=HybridSleep\n")
+        config_inv2.close()
+
+        # check warning message when CriticalPowerAction=Ignore and
+        # AllowRiskyCriticalPowerAction=true, because the config files
+        # (config_inv1 and config_inv2) setting it to the safe 'HybridSleep' are
+        # not activated due to wrong names
+        self.start_daemon(cfgfile=config.name, warns=True)
+        self.daemon_log.check_line(
+            'The "Ignore" CriticalPowerAction setting is considered risky:',
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        # config with invalid name 99-badname+*.conf file (not actually overriding)
+        config_inv3 = tempfile.NamedTemporaryFile(
+            delete=False,
+            mode="w",
+            dir=conf_d_dir_path,
+            prefix="99-badname+",
+            suffix=".conf",
+        )
+        config_inv3.write("[UPower]\n")
+        config_inv3.write("CriticalPowerAction=HybridSleep\n")
+        config_inv3.close()
+
+        # check warning message when CriticalPowerAction=Ignore and
+        # AllowRiskyCriticalPowerAction=true, because the config files
+        # (config_inv1, 2 and 3) setting it to the safe 'HybridSleep' are not
+        # activated due to wrong names
+        self.start_daemon(cfgfile=config.name, warns=True)
+        self.daemon_log.check_line(
+            'The "Ignore" CriticalPowerAction setting is considered risky:',
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+        self.stop_daemon()
+
+        os.unlink(config_inv3.name)
+        os.unlink(config_inv2.name)
+        os.unlink(config_inv1.name)
+        os.unlink(config3.name)
+        os.unlink(config2.name)
+        os.unlink(config.name)
+        os.rmdir(conf_d_dir_path)
+        os.rmdir(base_dir.name)
+
     #
     # Helper methods
     #
