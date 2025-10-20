@@ -21,8 +21,8 @@ file are instantly applied.
   <icon_name>system-suspend</icon_name>
 
   <action id="org.freedesktop.UPower.enable-charging-limit">
-    <_description>Enable battery charging limit</_description>
-    <_message>Authentication is required to set battery charging start and end limit.</_message>
+    <description>Enable battery charging limit</description>
+    <message>Authentication is required to set battery charging start and end limit.</message>
     <defaults>
       <allow_inactive>no</allow_inactive>
       <allow_active>yes</allow_active>
