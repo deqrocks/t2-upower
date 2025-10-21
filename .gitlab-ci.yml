@@ -55,6 +55,7 @@ image: $FEDORA_IMAGE
 pre_commit:
   stage: pre-commit
   script:
+    - dnf install -y libatomic
     - dnf install -y pre-commit
     - pre-commit run --all-files
 
