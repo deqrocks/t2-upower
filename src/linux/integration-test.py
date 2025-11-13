@@ -3511,6 +3511,106 @@ class Tests(dbusmock.DBusTestCase):
 
         os.unlink(config.name)
 
+    def test_critical_action_is_ignored_when_performing_battery_recalibration(self):
+        """check that critical action is ignored when performing battery recalibration"""
+
+        ac0 = self.testbed.add_device(
+            "power_supply",
+            "AC0",
+            None,
+            ["type", "Mains", "online", "1"],
+            [],
+        )
+
+        bat0 = self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "energy_now",
+                "50000000",
+                "voltage_now",
+                "12000000",
+                "charge_behaviour",
+                "[auto] inhibit-charge force-discharge",
+            ],
+            [],
+        )
+
+        config = tempfile.NamedTemporaryFile(delete=False, mode="w")
+        config.write("[UPower]\n")
+        config.write("UsePercentageForPolicy=true\n")
+        config.write("PercentageAction=5\n")
+        config.write("AllowRiskyCriticalPowerAction=true\n")
+        config.write("ExpectBatteryRecalibration=true\n")
+        config.close()
+
+        self.start_daemon(cfgfile=config.name, warns=True)
+
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 2)
+        bat0_up = devs[1]
+
+        # check warning message when CriticalPowerAction=Suspend and AllowRiskyCriticalPowerAction=true
+        self.daemon_log.check_line(
+            'The "ExpectBatteryRecalibration" setting is considered risky:'
+            " abrupt power loss due to battery exhaustion may lead to data"
+            " corruption. The system will unexpected down when the AC is disconnected."
+            " Use AllowRiskyCriticalPowerAction=false to disable support for"
+            " risky settings.",
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+
+        # simulate that battery has 0%
+        self.testbed.set_attribute(
+            bat0, "charge_behaviour", "auto inhibit-charge [force-discharge]"
+        )
+        self.testbed.set_attribute(bat0, "energy_now", "0")
+        self.testbed.uevent(bat0, "change")
+        time.sleep(0.5)
+        self.assertEqual(
+            self.get_dbus_display_property("WarningLevel"), UP_DEVICE_LEVEL_NONE
+        )
+
+        self.daemon_log.check_line(
+            "ExpectBatteryRecalibration is enabled and the AC is connected, so the battery level is not critical",
+            timeout=UP_DAEMON_ACTION_DELAY + 0.5,
+        )
+
+        self.testbed.set_attribute(bat0, "status", "Not charging")
+        self.testbed.uevent(bat0, "change")
+
+        self.daemon_log.check_line(
+            "ExpectBatteryRecalibration is enabled and the AC is connected, so the battery level is not critical",
+            timeout=UP_DAEMON_ACTION_DELAY + 1.0,
+        )
+
+        self.testbed.set_attribute(
+            bat0, "charge_behaviour", "[auto] inhibit-charge force-discharge"
+        )
+        self.testbed.set_attribute(bat0, "energy_now", "800000")
+        self.testbed.set_attribute(bat0, "status", "Charging")
+        self.testbed.uevent(bat0, "change")
+
+        time.sleep(0.5)
+        self.assertEqual(
+            self.get_dbus_display_property("WarningLevel"), UP_DEVICE_LEVEL_NONE
+        )
+
+        self.stop_daemon()
+
+        os.unlink(config.name)
+
     def test_low_battery_changes_history_save_interval(self):
         """check that we save the history more quickly on low battery"""
 
