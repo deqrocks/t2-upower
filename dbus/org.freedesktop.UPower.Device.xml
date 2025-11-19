@@ -935,6 +935,7 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
     </property>
 
     <property name="CapacityLevel" type="s" access="read">
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
       <doc:doc>
         <doc:description>
           <doc:para>
@@ -960,6 +961,15 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
               <doc:term>Full</doc:term>
             </doc:item>
           </doc:list>
+          <doc:para>
+            DEPRECATED
+          </doc:para>
+          <doc:para>
+            This property is deprecated since it is duplicated from the 'BatteryLevel' property.
+          </doc:para>
+          <doc:para>
+            Since 1.91.0
+          </doc:para>
         </doc:description>
       </doc:doc>
     </property>
