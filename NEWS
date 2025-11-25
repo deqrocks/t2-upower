@@ -1,3 +1,12 @@
+Version 1.91.0
+--------------
+Released: 2025-11-25
+
+- New feature: Support multiple keyboard backlight LED control. (#291 !203)
+- Make installation of tests optional (!202)
+- Support conf.d style config file (!286)
+- Deprecate CapacityLevel property (!290 #333)
+
 Version 1.90.10
 --------------
 Released: 2025-08-26
