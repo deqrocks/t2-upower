@@ -331,7 +331,9 @@ static void
 up_device_supply_sibling_discovered_guess_type (UpDevice *device,
 						GObject  *sibling)
 {
-	GUdevDevice *input, *native_device, *parent_device, *parent_sibling;
+	GUdevDevice *input, *native_device;
+	g_autoptr (GUdevDevice) parent_device = NULL;
+	g_autoptr (GUdevDevice) parent_sibling = NULL;
 	UpDeviceKind cur_type, new_type;
 	gboolean is_same_parent = FALSE;
 	char *new_model_name;
@@ -492,9 +494,10 @@ up_device_supply_sibling_discovered_guess_type (UpDevice *device,
 				      "type", new_type,
 				      "model", new_model_name,
 				      NULL);
-			g_free (new_model_name);
-		} else
+		} else {
 			g_object_set (device, "type", new_type, NULL);
+		}
+		g_free (new_model_name);
 	}
 }
 
