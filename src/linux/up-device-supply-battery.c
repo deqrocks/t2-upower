@@ -711,9 +711,8 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 	if (start != G_MAXUINT) {
 		g_string_printf (start_str, "%d", CLAMP (start, 0, 100));
 		if (!g_file_set_contents_full (start_filename, start_str->str, start_str->len,
-					  G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, error)) {
+					  G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, NULL))
 			err_count++;
-		}
 	} else {
 		g_debug ("Ignore charge_control_start_threshold setting");
 	}
@@ -721,9 +720,8 @@ up_device_supply_battery_set_battery_charge_thresholds(UpDevice *device, guint s
 	if (end != G_MAXUINT) {
 		g_string_printf (end_str, "%d", CLAMP (end, 0, 100));
 		if (!g_file_set_contents_full (end_filename, end_str->str, end_str->len,
-					  G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, error)) {
+					  G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, NULL))
 			err_count++;
-		}
 	} else {
 		g_debug ("Ignore charge_control_end_threshold setting");
 	}
