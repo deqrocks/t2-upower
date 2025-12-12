@@ -572,10 +572,17 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
     </property>
 
     <property name="Luminosity" type="d" access="read">
+      <annotation name="org.freedesktop.DBus.Deprecated" value="true"/>
       <doc:doc>
         <doc:description>
           <doc:para>
             Luminosity being recorded by the meter.
+          </doc:para>
+          <doc:para>
+            DEPRECATED
+          </doc:para>
+          <doc:para>
+            This property is deprecated since the code it depends on was removed in 0.99.12
           </doc:para>
         </doc:description>
       </doc:doc>
