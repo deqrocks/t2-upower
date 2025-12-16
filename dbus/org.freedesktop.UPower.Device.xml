@@ -967,9 +967,6 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
           <doc:para>
             This property is deprecated since it is duplicated from the 'BatteryLevel' property.
           </doc:para>
-          <doc:para>
-            Since 1.91.0
-          </doc:para>
         </doc:description>
       </doc:doc>
     </property>
