@@ -158,7 +158,7 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg name="type" direction="in" type="s">
         <doc:doc><doc:summary>The type of history.
-        Valid types are <doc:tt>rate</doc:tt> or <doc:tt>charge</doc:tt>.</doc:summary></doc:doc>
+        Valid types are <doc:tt>rate</doc:tt>, <doc:tt>charge</doc:tt> and <doc:tt>voltage</doc:tt>.</doc:summary></doc:doc>
       </arg>
       <arg name="timespan" direction="in" type="u">
         <doc:doc><doc:summary>The amount of data to return in seconds, or 0 for all.</doc:summary></doc:doc>
@@ -186,7 +186,7 @@ method return sender=:1.386 -> dest=:1.477 reply_serial=2
               <doc:item>
                 <doc:term>value</doc:term>
                 <doc:definition>
-                  The data value, for instance the rate in W or the charge in %.
+                  The data value, for instance the rate in W, the charge in % and the voltage in V.
                 </doc:definition>
               </doc:item>
               <doc:item>
