@@ -45,11 +45,13 @@ struct UpHistoryPrivate
 	gint64			 time_full_last;
 	gint64			 time_empty_last;
 	gdouble			 percentage_last;
+	gdouble			 voltage_last;
 	UpDeviceState		 state;
 	GPtrArray		*data_rate;
 	GPtrArray		*data_charge;
 	GPtrArray		*data_time_full;
 	GPtrArray		*data_time_empty;
+	GPtrArray		*data_voltage;
 	GSource			*save_source;
 	guint			 max_data_age;
 	gchar			*dir;
@@ -254,6 +256,8 @@ up_history_get_data (UpHistory *history, UpHistoryType type, guint timespan, gui
 		array_data = history->priv->data_time_full;
 	else if (type == UP_HISTORY_TYPE_TIME_EMPTY)
 		array_data = history->priv->data_time_empty;
+	else if (type == UP_HISTORY_TYPE_VOLTAGE)
+		array_data = history->priv->data_voltage;
 
 	/* not recognized */
 	if (array_data == NULL)
@@ -549,6 +553,7 @@ up_history_save_data (UpHistory *history)
 	gchar *filename_charge = NULL;
 	gchar *filename_time_full = NULL;
 	gchar *filename_time_empty = NULL;
+	gchar *filename_voltage = NULL;
 
 	/* we have an ID? */
 	if (history->priv->id == NULL) {
@@ -561,6 +566,7 @@ up_history_save_data (UpHistory *history)
 	filename_charge = up_history_get_filename (history, "charge");
 	filename_time_full = up_history_get_filename (history, "time-full");
 	filename_time_empty = up_history_get_filename (history, "time-empty");
+	filename_voltage = up_history_get_filename (history, "voltage");
 
 	/* save to disk */
 	ret = up_history_array_to_file (history, history->priv->data_rate, filename_rate);
@@ -575,11 +581,15 @@ up_history_save_data (UpHistory *history)
 	ret = up_history_array_to_file (history, history->priv->data_time_empty, filename_time_empty);
 	if (!ret)
 		goto out;
+	ret = up_history_array_to_file (history, history->priv->data_voltage, filename_voltage);
+	if (!ret)
+		goto out;
 out:
 	g_free (filename_rate);
 	g_free (filename_charge);
 	g_free (filename_time_full);
 	g_free (filename_time_empty);
+	g_free (filename_voltage);
 	return ret;
 }
 
@@ -693,6 +703,11 @@ up_history_load_data (UpHistory *history)
 	up_history_array_from_file (history->priv->data_time_empty, filename);
 	g_free (filename);
 
+	/* load voltage history from disk */
+	filename = up_history_get_filename (history, "voltage");
+	up_history_array_from_file (history->priv->data_voltage, filename);
+	g_free (filename);
+
 	/* save a marker so we don't use incomplete percentages */
 	item = up_history_item_new ();
 	up_history_item_set_time_to_present (item);
@@ -700,6 +715,7 @@ up_history_load_data (UpHistory *history)
 	g_ptr_array_add (history->priv->data_charge, g_object_ref (item));
 	g_ptr_array_add (history->priv->data_time_full, g_object_ref (item));
 	g_ptr_array_add (history->priv->data_time_empty, g_object_ref (item));
+	g_ptr_array_add (history->priv->data_voltage, g_object_ref (item));
 	g_object_unref (item);
 	up_history_schedule_save (history);
 
@@ -871,6 +887,37 @@ up_history_set_time_empty_data (UpHistory *history, gint64 time_s)
 }
 
 /**
+ * up_history_set_voltage_data:
+ **/
+gboolean
+up_history_set_voltage_data (UpHistory *history, gdouble voltage)
+{
+	UpHistoryItem *item;
+
+	g_return_val_if_fail (UP_IS_HISTORY (history), FALSE);
+
+	if (history->priv->id == NULL)
+		return FALSE;
+	if (history->priv->state == UP_DEVICE_STATE_UNKNOWN)
+		return FALSE;
+	if (history->priv->voltage_last == voltage)
+		return FALSE;
+
+	/* add to array and schedule save file */
+	item = up_history_item_new ();
+	up_history_item_set_time_to_present (item);
+	up_history_item_set_value (item, voltage);
+	up_history_item_set_state (item, history->priv->state);
+	g_ptr_array_add (history->priv->data_voltage, item);
+	up_history_schedule_save (history);
+
+	/* save last value */
+	history->priv->voltage_last = voltage;
+
+	return TRUE;
+}
+
+/**
  * up_history_is_device_id_equal:
  **/
 gboolean
@@ -907,6 +954,7 @@ up_history_init (UpHistory *history)
 	history->priv->data_charge = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 	history->priv->data_time_full = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 	history->priv->data_time_empty = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+	history->priv->data_voltage = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 	history->priv->max_data_age = UP_HISTORY_DEFAULT_MAX_DATA_AGE;
 
 	if (g_getenv ("UPOWER_HISTORY_DIR"))
@@ -937,6 +985,7 @@ up_history_finalize (GObject *object)
 	g_ptr_array_unref (history->priv->data_charge);
 	g_ptr_array_unref (history->priv->data_time_full);
 	g_ptr_array_unref (history->priv->data_time_empty);
+	g_ptr_array_unref (history->priv->data_voltage);
 
 	g_free (history->priv->id);
 	g_free (history->priv->dir);

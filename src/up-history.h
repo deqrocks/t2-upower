@@ -55,6 +55,7 @@ typedef enum {
 	UP_HISTORY_TYPE_RATE,
 	UP_HISTORY_TYPE_TIME_FULL,
 	UP_HISTORY_TYPE_TIME_EMPTY,
+	UP_HISTORY_TYPE_VOLTAGE,
 	UP_HISTORY_TYPE_UNKNOWN
 } UpHistoryType;
 
@@ -81,6 +82,8 @@ gboolean	 up_history_set_time_full_data		(UpHistory		*history,
 							 gint64			 time);
 gboolean	 up_history_set_time_empty_data		(UpHistory		*history,
 							 gint64			 time);
+gboolean	 up_history_set_voltage_data		(UpHistory		*history,
+							 gdouble		 voltage);
 void		 up_history_set_max_data_age		(UpHistory		*history,
 							 guint			 max_data_age);
 gboolean	 up_history_save_data			(UpHistory		*history);
