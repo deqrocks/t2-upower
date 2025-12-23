@@ -139,6 +139,9 @@ up_test_history_remove_temp_files (void)
 	filename = g_build_filename (history_dir, "history-rate-test.dat", NULL);
 	g_unlink (filename);
 	g_free (filename);
+	filename = g_build_filename (history_dir, "history-voltage-test.dat", NULL);
+	g_unlink (filename);
+	g_free (filename);
 }
 
 static void
@@ -178,18 +181,21 @@ up_test_history_func (void)
 	up_history_set_rate_data (history, 0.99f);
 	up_history_set_time_empty_data (history, 12346);
 	up_history_set_time_full_data (history, 54322);
+	up_history_set_voltage_data (history, 3.7f);
 
 	g_usleep (2 * G_USEC_PER_SEC);
 	up_history_set_charge_data (history, 90);
 	up_history_set_rate_data (history, 1.00f);
 	up_history_set_time_empty_data (history, 12345);
 	up_history_set_time_full_data (history, 54321);
+	up_history_set_voltage_data (history, 3.9f);
 
 	g_usleep (2 * G_USEC_PER_SEC);
 	up_history_set_charge_data (history, 95);
 	up_history_set_rate_data (history, 1.01f);
 	up_history_set_time_empty_data (history, 12344);
 	up_history_set_time_full_data (history, 54320);
+	up_history_set_voltage_data (history, 4.1f);
 
 	/* get data for last 10 seconds */
 	array = up_history_get_data (history, UP_HISTORY_TYPE_CHARGE, 10, 100);
