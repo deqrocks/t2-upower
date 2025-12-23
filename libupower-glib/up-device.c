@@ -430,6 +430,7 @@ up_device_to_text (UpDevice *device)
 	if (up_exported_device_get_has_history (priv->proxy_device)) {
 		up_device_to_text_history (device, string, "charge");
 		up_device_to_text_history (device, string, "rate");
+		up_device_to_text_history (device, string, "voltage");
 	}
 
 	return g_string_free (string, FALSE);
@@ -461,7 +462,7 @@ up_device_refresh_sync (UpDevice *device, GCancellable *cancellable, GError **er
 /**
  * up_device_get_history_sync:
  * @device: a #UpDevice instance.
- * @type: The type of history, known values are "rate" and "charge".
+ * @type: The type of history. Known values are "rate", "charge" and "voltage".
  * @timespec: the amount of time to look back into time.
  * @resolution: the resolution of data.
  * @cancellable: a #GCancellable or %NULL
