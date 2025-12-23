@@ -213,6 +213,7 @@ update_history (UpDevice *device)
 	up_history_set_rate_data (priv->history, up_exported_device_get_energy_rate (skeleton));
 	up_history_set_time_full_data (priv->history, up_exported_device_get_time_to_full (skeleton));
 	up_history_set_time_empty_data (priv->history, up_exported_device_get_time_to_empty (skeleton));
+	up_history_set_voltage_data (priv->history, up_exported_device_get_voltage (skeleton));
 }
 
 static void
@@ -669,6 +670,8 @@ up_device_get_history (UpExportedDevice *skeleton,
 		type = UP_HISTORY_TYPE_TIME_FULL;
 	else if (g_strcmp0 (type_string, "time-empty") == 0)
 		type = UP_HISTORY_TYPE_TIME_EMPTY;
+	else if (g_strcmp0 (type_string, "voltage") == 0)
+		type = UP_HISTORY_TYPE_VOLTAGE;
 
 	/* something recognized */
 	if (type != UP_HISTORY_TYPE_UNKNOWN) {
