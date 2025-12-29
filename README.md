@@ -51,3 +51,15 @@ logs. There are two ways of doing so:
 
   3. `sudo systemctl restart upower.service`
   4. Grab logs using `journalctl -u upower.service` or similar
+
+## Using tartan
+
+[Tartan](https://gitlab.freedesktop.org/tartan/tartan/-/wikis/home) is a LLVM static
+analysis plugin built to analyze GLib code. It can be installed and then run using:
+
+```shell
+mkdir build
+cd build
+meson setup ..
+SCANBUILD=../contrib/tartan.sh ninja scan-build
+```
