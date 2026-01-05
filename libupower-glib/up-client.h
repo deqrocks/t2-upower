@@ -94,9 +94,7 @@ GPtrArray	*up_client_get_devices_finish		(UpClient		*client,
 							 GAsyncResult		*res,
 							 GError		       **error);
 const gchar	*up_client_get_daemon_version		(UpClient		*client);
-G_DEPRECATED
 gboolean	 up_client_get_lid_is_closed		(UpClient		*client);
-G_DEPRECATED
 gboolean	 up_client_get_lid_is_present		(UpClient		*client);
 gboolean	 up_client_get_on_battery		(UpClient		*client);
 
