@@ -106,8 +106,6 @@ up_client_get_devices_full (UpClient      *client,
 	GPtrArray *array;
 	guint i;
 
-	g_return_val_if_fail (UP_IS_CLIENT (client), NULL);
-
 	if (up_exported_daemon_call_enumerate_devices_sync (client->priv->proxy,
 							    &devices,
 							    cancellable,
@@ -147,6 +145,8 @@ up_client_get_devices2 (UpClient *client)
 {
 	g_autoptr(GError) error = NULL;
 	GPtrArray *ret = NULL;
+
+	g_return_val_if_fail (UP_IS_CLIENT (client), NULL);
 
 	ret = up_client_get_devices_full (client, NULL, &error);
 	if (!ret) {
@@ -191,6 +191,8 @@ up_client_get_devices_async (UpClient            *client,
 			     gpointer             user_data)
 {
 	g_autoptr(GTask) task = NULL;
+
+	g_return_if_fail (UP_IS_CLIENT (client));
 
 	task = g_task_new (client, cancellable, callback, user_data);
 	g_task_set_source_tag (task, (gpointer) G_STRFUNC);
