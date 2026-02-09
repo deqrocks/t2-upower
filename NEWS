@@ -1,3 +1,16 @@
+Version 1.91.1
+--------------
+Released: 2026-02-10
+
+- Fix: a resource leak (!294)
+- Fix: a NULL exception caused by a Non-NULL GError pointer (!295, #331)
+- Fix client API: crashing when printing the error message from a NULL GError pointer (!304)
+- Fix: ACPI reports -NaN capacity value (!306)
+- Feature: Skip CriticalPowerAction when performing battery recalibration (!285, #312)
+- Deprecate: capacity_level and luminosity property (!293, !297 )
+- CI: Add a tartan LLVM static analysis (!300)
+- Feature: History supports voltage item (!299)
+
 Version 1.91.0
 --------------
 Released: 2025-11-25
