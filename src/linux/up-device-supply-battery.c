@@ -513,6 +513,8 @@ up_device_supply_battery_refresh (UpDevice *device,
 
 	if (!self->ignore_system_percentage) {
 		values.percentage = g_udev_device_get_sysfs_attr_as_double_uncached (native, "capacity");
+		if (isnan (values.percentage))
+			values.percentage = 0.0f;
 		values.percentage = CLAMP(values.percentage, 0.0f, 100.0f);
 	}
 

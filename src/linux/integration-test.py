@@ -738,6 +738,42 @@ class Tests(dbusmock.DBusTestCase):
         )
         self.stop_daemon()
 
+    def test_nan_percentage_battery_capacity(self):
+        """ACPI returns NaN for capacity"""
+
+        self.testbed.add_device(
+            "power_supply",
+            "BAT0",
+            None,
+            [
+                "type",
+                "Battery",
+                "present",
+                "1",
+                "status",
+                "Discharging",
+                "capacity",
+                "-NaN",
+                "energy_full",
+                "60000000",
+                "energy_full_design",
+                "80000000",
+                "voltage_now",
+                "12000000",
+            ],
+            [],
+        )
+
+        self.start_daemon()
+        devs = self.proxy.EnumerateDevices()
+        self.assertEqual(len(devs), 1)
+        bat0_up = devs[0]
+
+        self.assertEqual(self.get_dbus_dev_property(bat0_up, "Percentage"), 0.0)
+
+        # don't assert if nan percentage is reported
+        self.stop_daemon()
+
     def test_multiple_batteries(self):
         """Multiple batteries"""
 
