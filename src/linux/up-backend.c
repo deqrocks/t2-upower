@@ -571,6 +571,7 @@ up_backend_get_critical_action (UpBackend *backend)
 		{ "Hibernate", "CanHibernate" },
 		{ "PowerOff", NULL },
 		{ "Ignore", NULL },
+		{ "Sleep", "CanSleep"},
 	};
 	g_autofree gchar *action = NULL;
 	gboolean can_risky = FALSE;
@@ -590,6 +591,12 @@ up_backend_get_critical_action (UpBackend *backend)
 			g_free (action);
 			action = g_strdup_printf ("HybridSleep");
 		}
+	}
+
+	/* if "Auto", use "Sleep()" */
+	if (!g_strcmp0 (action, "Auto")) {
+		g_free (action);
+		action = g_strdup_printf ("Sleep");
 	}
 
 	if (action != NULL) {
@@ -649,7 +656,10 @@ up_backend_take_action (UpBackend *backend)
 		return;
 	}
 
-	action = g_strdup_printf ("%sWithFlags", method);
+	if (!g_strcmp0 (method, "Sleep"))
+		action = g_strdup ("Sleep");
+	else
+		action = g_strdup_printf ("%sWithFlags", method);
 
 	/* flag 16 is SD_LOGIND_SKIP_INHIBITORS */
 	res = g_dbus_proxy_call_sync (backend->priv->logind_proxy,
@@ -662,9 +672,18 @@ up_backend_take_action (UpBackend *backend)
 
 	/* if the new API doesn't work, use old one */
 	if (error != NULL) {
+		g_autofree gchar *action_old = NULL;
 		g_debug ("The new power action API doesn't work, using old one.");
+
+		if (!g_strcmp0 (method, "Sleep")) {
+			/* Sleep() is not available, so PowerOff instead */
+			g_debug ("Sleep() is not available, using PowerOff instead");
+			action_old = g_strdup ("PowerOff");
+		} else {
+			action_old = g_strdup (method);
+		}
 		g_dbus_proxy_call (backend->priv->logind_proxy,
-				   method,
+				   action_old,
 				   g_variant_new ("(b)", FALSE),
 				   G_DBUS_CALL_FLAGS_NONE,
 				   -1,
