@@ -566,12 +566,16 @@ up_backend_get_critical_action (UpBackend *backend)
 		const gchar *method;
 		const gchar *can_method;
 	} actions[] = {
+		/*
+		 * The fallback order is
+		 * Suspend -> HybridSleep -> Hibernate -> PowerOff -> Sleep -> Ignore
+		 */
 		{ "Suspend", "CanSuspend" },
 		{ "HybridSleep", "CanHybridSleep" },
 		{ "Hibernate", "CanHibernate" },
-		{ "PowerOff", NULL },
-		{ "Ignore", NULL },
+		{ "PowerOff", "CanPowerOff" },
 		{ "Sleep", "CanSleep"},
+		{ "Ignore", NULL },
 	};
 	g_autofree gchar *action = NULL;
 	gboolean can_risky = FALSE;
