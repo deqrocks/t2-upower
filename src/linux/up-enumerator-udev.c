@@ -295,6 +295,8 @@ kbd_backlight_add_helper (UpEnumeratorUdev  *self,
 				 "daemon", daemon,
 				 "native", device,
 				 NULL);
+	g_debug ("kbd backlight uevent add action=%s sysfs=%s created=%d",
+		 action, device_key, up_kbd != NULL);
 
 	if (up_kbd)
 		obj = G_OBJECT (up_kbd);
@@ -359,6 +361,9 @@ uevent_signal_handler_cb (UpEnumeratorUdev *self,
 				power_supply_add_helper (self, action, device, client, obj, device_key);
 
 		} else {
+			if (is_kbd_backlight)
+				g_debug ("kbd backlight uevent refresh action=%s sysfs=%s obj=%p",
+					 action, g_udev_device_get_sysfs_path (device), obj);
 			if (!UP_IS_DEVICE (obj)) {
 				g_autoptr(GUdevDevice) d = get_latest_udev_device (self, obj);
 				if (d)
@@ -384,6 +389,8 @@ uevent_signal_handler_cb (UpEnumeratorUdev *self,
 			g_debug ("removing device for path %s", g_udev_device_get_sysfs_path (device));
 
 			if (is_kbd_backlight) {
+				g_debug ("kbd backlight uevent remove sysfs=%s obj=%p",
+					 g_udev_device_get_sysfs_path (device), obj);
 				g_signal_emit_by_name (self, "device-removed", obj);
 				return;
 			}

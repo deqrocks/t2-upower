@@ -67,9 +67,12 @@ up_kbd_backlight_led_brightness_write (UpDeviceKbdBacklight *kbd_backlight, cons
 	priv = up_kbd_backlight_led_get_instance_private (kbd);
 
 	g_string_printf (value_str, "%d", CLAMP (value, 0, priv->max_brightness));
+	g_debug ("kbd backlight write path=%s value=%s max=%d",
+		 native_path, value_str->str, priv->max_brightness);
 	if (!g_file_set_contents_full (native_path, value_str->str, value_str->len,
 				       G_FILE_SET_CONTENTS_ONLY_EXISTING, 0644, NULL)) {
-		g_debug ("Failed on setting keyboard backlight LED brightness: %s", native_path);
+		g_debug ("kbd backlight write failed path=%s errno=%d (%s)",
+			 native_path, errno, g_strerror (errno));
 		return FALSE;
 	}
 
@@ -89,11 +92,15 @@ up_kbd_backlight_led_brightness_read (UpDeviceKbdBacklight *kbd_backlight, const
 
 	g_return_val_if_fail (UP_IS_DEVICE_KBD_BACKLIGHT (kbd_backlight), brightness);
 
-	if (!g_file_get_contents (native_path, &buf, NULL, NULL))
+	g_debug ("kbd backlight read path=%s", native_path);
+	if (!g_file_get_contents (native_path, &buf, NULL, NULL)) {
+		g_debug ("kbd backlight read failed path=%s errno=%d (%s)",
+			 native_path, errno, g_strerror (errno));
 		return -1;
+	}
 
 	g_strstrip (buf);
-	g_debug ("brightness: %s", buf);
+	g_debug ("kbd backlight read value=%s", buf);
 
 	brightness = g_ascii_strtoll (buf, NULL, 10);
 	if (brightness < 0) {
@@ -124,6 +131,8 @@ up_kbd_backlight_led_set_brightness (UpDeviceKbdBacklight *kbd_backlight, gint v
 	g_return_val_if_fail (native_path != NULL, FALSE);
 
 	filename = g_build_filename (native_path, "brightness", NULL);
+	g_debug ("kbd backlight set native=%s brightness_file=%s value=%d",
+		 native_path, filename, value);
 
 	ret = up_kbd_backlight_led_brightness_write (kbd_backlight, filename, value);
 
@@ -150,6 +159,8 @@ up_kbd_backlight_led_get_brightness (UpDeviceKbdBacklight *kbd_backlight)
 	g_return_val_if_fail (native_path != NULL, brightness);
 
 	filename = g_build_filename (native_path, "brightness", NULL);
+	g_debug ("kbd backlight get native=%s brightness_file=%s",
+		 native_path, filename);
 	brightness = up_kbd_backlight_led_brightness_read (kbd_backlight, filename);
 
 	return brightness;
@@ -245,8 +256,11 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 
 	native_path = up_native_get_native_path (native);
 	filename = g_build_filename (native_path, "max_brightness", NULL);
+	g_debug ("kbd backlight coldplug native=%s max_file=%s",
+		 native_path, filename);
 
 	priv->max_brightness = up_kbd_backlight_led_brightness_read (kbd_backlight, filename);
+	g_debug ("kbd backlight coldplug max=%d", priv->max_brightness);
 
 	/* Set up device watcher */
 	path_hw_changed = g_build_filename (native_path, "brightness_hw_changed", NULL);
@@ -256,6 +270,8 @@ up_kbd_backlight_led_coldplug (UpDeviceKbdBacklight *kbd_backlight)
 		g_io_add_watch (priv->channel_hw_changed,
 				G_IO_PRI, up_kbd_backlight_led_event_io, kbd_backlight);
 	}
+	g_debug ("kbd backlight coldplug hw_changed=%s fd=%d",
+		 path_hw_changed, priv->fd_hw_changed);
 
 	return TRUE;
 }

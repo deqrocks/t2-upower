@@ -1122,6 +1122,9 @@ up_daemon_device_added_cb (UpBackend *backend, GObject *device, UpDaemon *daemon
 		g_debug ("Add a led device to the device list");
 		/* emit */
 		object_path = up_device_kbd_backlight_get_object_path (UP_DEVICE_KBD_BACKLIGHT (device));
+		g_debug ("kbd backlight daemon add object_path=%s native=%s",
+			 object_path,
+			 up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device)));
 		if (object_path == NULL) {
 			g_debug ("Device %s was unregistered before it was on the bus",
 				 up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device)));
@@ -1155,6 +1158,9 @@ up_daemon_device_removed_cb (UpBackend *backend, UpDevice *device, UpDaemon *dae
 		/* remove from list (device remains valid during the function call) */
 		up_device_list_remove (priv->kbd_backlight_devices, device);
 		object_path = up_device_kbd_backlight_get_object_path (UP_DEVICE_KBD_BACKLIGHT (device));
+		g_debug ("kbd backlight daemon remove object_path=%s native=%s",
+			 object_path,
+			 up_exported_kbd_backlight_get_native_path (UP_EXPORTED_KBD_BACKLIGHT (device)));
 	} else {
 		return;
 	}
