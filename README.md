@@ -19,6 +19,7 @@ ninja -C build
 ```
 
 ## Deploy 
+This is for Fedora. Other distros may use different paths.
 
 ```bash
 sudo install -m 0755 build/src/upowerd /usr/libexec/upowerd
