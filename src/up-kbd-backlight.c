@@ -38,6 +38,7 @@
 #include "up-types.h"
 
 static void     up_kbd_backlight_finalize   (GObject	*object);
+static gboolean up_kbd_backlight_find       (UpKbdBacklight *kbd_backlight);
 
 struct UpKbdBacklightPrivate
 {
@@ -48,6 +49,33 @@ struct UpKbdBacklightPrivate
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (UpKbdBacklight, up_kbd_backlight, UP_TYPE_EXPORTED_KBD_BACKLIGHT_SKELETON)
+
+static void
+up_kbd_backlight_close_fds (UpKbdBacklight *kbd_backlight)
+{
+	if (kbd_backlight->priv->channel_hw_changed) {
+		g_io_channel_shutdown (kbd_backlight->priv->channel_hw_changed, FALSE, NULL);
+		g_io_channel_unref (kbd_backlight->priv->channel_hw_changed);
+		kbd_backlight->priv->channel_hw_changed = NULL;
+	}
+
+	if (kbd_backlight->priv->fd_hw_changed >= 0) {
+		close (kbd_backlight->priv->fd_hw_changed);
+		kbd_backlight->priv->fd_hw_changed = -1;
+	}
+
+	if (kbd_backlight->priv->fd >= 0) {
+		close (kbd_backlight->priv->fd);
+		kbd_backlight->priv->fd = -1;
+	}
+}
+
+static gboolean
+up_kbd_backlight_reopen (UpKbdBacklight *kbd_backlight)
+{
+	up_kbd_backlight_close_fds (kbd_backlight);
+	return up_kbd_backlight_find (kbd_backlight);
+}
 
 /**
  * up_kbd_backlight_emit_change:
@@ -74,6 +102,13 @@ up_kbd_backlight_brightness_read (UpKbdBacklight *kbd_backlight, int fd)
 
 	lseek (fd, 0, SEEK_SET);
 	len = read (fd, buf, G_N_ELEMENTS (buf) - 1);
+	if (len < 0) {
+		if (errno == ENODEV && fd == kbd_backlight->priv->fd) {
+			if (up_kbd_backlight_reopen (kbd_backlight))
+				return up_kbd_backlight_brightness_read (kbd_backlight, kbd_backlight->priv->fd);
+		}
+		return -1;
+	}
 
 	if (len > 0) {
 		buf[len] = '\0';
@@ -103,9 +138,11 @@ up_kbd_backlight_brightness_write (UpKbdBacklight *kbd_backlight, gint value)
 
 	/* write new values to backlight */
 	if (kbd_backlight->priv->fd < 0) {
-		g_warning ("cannot write to kbd_backlight as file not open");
-		ret = FALSE;
-		goto out;
+		if (!up_kbd_backlight_reopen (kbd_backlight)) {
+			g_warning ("cannot write to kbd_backlight as file not open");
+			ret = FALSE;
+			goto out;
+		}
 	}
 
 	/* limit to between 0 and max */
@@ -119,6 +156,14 @@ up_kbd_backlight_brightness_write (UpKbdBacklight *kbd_backlight, gint value)
 	lseek (kbd_backlight->priv->fd, 0, SEEK_SET);
 	retval = write (kbd_backlight->priv->fd, text, length);
 	if (retval != length) {
+		if (errno == ENODEV && up_kbd_backlight_reopen (kbd_backlight)) {
+			lseek (kbd_backlight->priv->fd, 0, SEEK_SET);
+			retval = write (kbd_backlight->priv->fd, text, length);
+			if (retval == length) {
+				up_kbd_backlight_emit_change (kbd_backlight, value, "external");
+				goto out;
+			}
+		}
 		g_warning ("writing '%s' to device failed", text);
 		ret = FALSE;
 		goto out;
@@ -143,6 +188,14 @@ up_kbd_backlight_get_brightness (UpExportedKbdBacklight *skeleton,
 				 UpKbdBacklight *kbd_backlight)
 {
 	gint brightness;
+
+	if (kbd_backlight->priv->fd < 0 &&
+	    !up_kbd_backlight_reopen (kbd_backlight)) {
+		g_dbus_method_invocation_return_error (invocation,
+						       UP_DAEMON_ERROR, UP_DAEMON_ERROR_GENERAL,
+						       "error reading brightness");
+		return TRUE;
+	}
 
 	brightness = up_kbd_backlight_brightness_read (kbd_backlight, kbd_backlight->priv->fd);
 
@@ -250,6 +303,7 @@ up_kbd_backlight_find (UpKbdBacklight *kbd_backlight)
 	GError *error = NULL;
 
 	kbd_backlight->priv->fd = -1;
+	kbd_backlight->priv->fd_hw_changed = -1;
 
 	/* open directory */
 	dir = g_dir_open ("/sys/class/leds", 0, &error);
@@ -346,18 +400,7 @@ up_kbd_backlight_finalize (GObject *object)
 
 	kbd_backlight = UP_KBD_BACKLIGHT (object);
 	kbd_backlight->priv = up_kbd_backlight_get_instance_private (kbd_backlight);
-
-	if (kbd_backlight->priv->channel_hw_changed) {
-		g_io_channel_shutdown (kbd_backlight->priv->channel_hw_changed, FALSE, NULL);
-		g_io_channel_unref (kbd_backlight->priv->channel_hw_changed);
-	}
-
-	if (kbd_backlight->priv->fd_hw_changed >= 0)
-		close (kbd_backlight->priv->fd_hw_changed);
-
-	/* close file */
-	if (kbd_backlight->priv->fd >= 0)
-		close (kbd_backlight->priv->fd);
+	up_kbd_backlight_close_fds (kbd_backlight);
 
 	G_OBJECT_CLASS (up_kbd_backlight_parent_class)->finalize (object);
 }
