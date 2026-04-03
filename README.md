@@ -21,7 +21,20 @@ ninja -C build
 ## Deploy 
 This is for Fedora. Other distros may use different paths.
 
+Fedora, Debian and Ubuntu install `upowerd` to `/usr/libexec/upowerd`.
+
+Arch and CachyOS install it to `/usr/lib/upower/upowerd`.
+
+Fedora / Debian / Ubuntu:
+
 ```bash
 sudo install -m 0755 build/src/upowerd /usr/libexec/upowerd
+sudo systemctl restart upower
+```
+
+Arch / CachyOS:
+
+```bash
+sudo install -m 0755 build/src/upowerd /usr/lib/upower/upowerd
 sudo systemctl restart upower
 ```
