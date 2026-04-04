@@ -35,6 +35,6 @@ sudo systemctl restart upower
 Arch / CachyOS:
 
 ```bash
-sudo install -m 0755 build/src/upowerd /usr/lib/upower/upowerd
+sudo install -m 0755 build/src/upowerd /usr/lib/upowerd
 sudo systemctl restart upower
 ```
