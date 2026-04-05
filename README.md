@@ -9,7 +9,7 @@ This tree carries a fix in `src/up-kbd-backlight.c` so keyboard brightness recov
 ## Required repositories
 
 - `apple-bce`: `https://github.com/deqrocks/apple-bce`
-- `t2-kdb-tb`: `https://github.com/deqrocks/t2-kdb-tb`
+- `t2-kdb-tb`: `https://github.com/deqrocks/t2-kbd-tb`
 
 ## Build
 
