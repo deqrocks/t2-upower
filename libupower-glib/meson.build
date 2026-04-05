@@ -58,7 +58,7 @@ libupower_glib_dep = declare_dependency(
     dependencies: [ gobject_dep, gio_dep ],
 )
 
-if gobject_introspection.found()
+if introspection_enabled
     gir = gnome.generate_gir(libupower_glib,
         sources : libupower_glib_headers + libupower_glib_sources,
         namespace : 'UPowerGlib',

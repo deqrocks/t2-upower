@@ -39,11 +39,12 @@ endforeach
 upowerd_dbus = static_library('libupower-dbus',
     sources: upowerd_dbus_sources + upowerd_dbus_headers,
     dependencies: [ gobject_dep, gio_dep, gio_unix_dep ],
+    include_directories: [ '.', '..' ],
 )
 
 upowerd_dbus_dep = declare_dependency(
     link_with: upowerd_dbus,
-    include_directories: [ '.' ],
+    include_directories: [ '.', '..' ],
     sources: upowerd_dbus_headers,
     dependencies: [ gio_unix_dep ]
 )
