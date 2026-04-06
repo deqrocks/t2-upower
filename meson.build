@@ -75,7 +75,17 @@ cdata.set_quoted('BACKEND', os_backend)
 gudev_dep = dependency('', required: false)
 idevice_dep = dependency('', required: false)
 plist_dep = dependency('', required: false)
-gobject_introspection = dependency('gobject-introspection-1.0', required: get_option('introspection'))
+
+introspection_opt = get_option('introspection')
+gobject_introspection = dependency('gobject-introspection-1.0',
+                                   required: introspection_opt.enabled())
+g_ir_scanner = find_program('g-ir-scanner',
+                            required: introspection_opt.enabled(),
+                            disabler: true)
+g_ir_compiler = find_program('g-ir-compiler',
+                             required: introspection_opt.enabled(),
+                             disabler: true)
+introspection_enabled = gobject_introspection.found() and g_ir_scanner.found() and g_ir_compiler.found()
 
 
 if os_backend == 'linux'
@@ -167,6 +177,7 @@ output += '  historydir:     ' + historydir
 output += '\nFeatures'
 output += '  Backend:                  ' + os_backend
 output += '  libimobiledevice support: ' + idevice_dep.found().to_string()
+output += '  Building introspection:   ' + introspection_enabled.to_string()
 output += '  Building api docs:        ' + get_option('gtk-doc').to_string()
 output += '  Building man pages:       ' + get_option('man').to_string()
 

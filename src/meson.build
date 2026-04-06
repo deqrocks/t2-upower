@@ -125,7 +125,7 @@ test(
 
 # On Linux, we can run the additional integration test;
 # defined here as we would have a circular dependency otherwise.
-if os_backend == 'linux' and gobject_introspection.found()
+if os_backend == 'linux' and introspection_enabled
     env = environment()
     env.prepend('top_builddir', join_paths(meson.project_build_root()))
     env.prepend('LD_LIBRARY_PATH', join_paths(meson.project_build_root(), 'libupower-glib'))
