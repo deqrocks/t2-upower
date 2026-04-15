@@ -1,0 +1,22 @@
+pkgname=t2-upower
+pkgver=1.91.2
+pkgrel=1
+pkgdesc='UPower fork with T2-specific suspend and keyboard-backlight fixes'
+arch=(x86_64)
+url='https://github.com/deqrocks/t2-upower'
+license=(GPL2)
+depends=(glib2 libgudev polkit)
+makedepends=(git meson gcc pkgconf glib2 libgudev polkit)
+source=(t2-upower-1.91.2.tar.gz)
+sha256sums=(2c305e0d187be6ab5332473dce6b282cae5036333c0fa883545750bbc95f78ff)
+
+build() {
+  cd "$srcdir/t2-upower-1.91.2"
+  meson setup build -Dgtk-doc=false
+  meson compile -C build
+}
+
+package() {
+  cd "$srcdir/t2-upower-1.91.2"
+  DESTDIR="$pkgdir" meson install -C build --no-rebuild
+}

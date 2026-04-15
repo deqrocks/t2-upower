@@ -1,0 +1,303 @@
+include:
+  - project: 'freedesktop/ci-templates'
+    ref: master
+    file: '/templates/fedora.yml'
+  - project: 'freedesktop/ci-templates'
+    ref: master
+    file: '/templates/debian.yml'
+
+variables:
+  FDO_DISTRIBUTION_TAG: latest
+  FDO_DISTRIBUTION_VERSION: rawhide
+  FDO_UPSTREAM_REPO: "upower/$CI_PROJECT_NAME"
+  FEDORA_IMAGE: "$CI_REGISTRY/upower/$CI_PROJECT_NAME/fedora/$FDO_DISTRIBUTION_VERSION:$FDO_DISTRIBUTION_TAG"
+  DEPENDENCIES:
+    gtk-doc
+    meson
+    gettext-devel
+    gcc
+    redhat-rpm-config
+    gcc-c++
+    glibc-devel
+    systemd
+    sqlite-devel
+    gobject-introspection-devel
+    libgudev-devel
+    libimobiledevice-devel
+    glib2-devel
+    libplist-devel
+    umockdev
+    dbus-x11
+    polkit-devel
+    python3-gobject
+    python3-dbusmock
+    python3-pip
+    python3-packaging
+    git
+    clang
+  LAST_ABI_BREAK: "9058d45685d1c7c08d52fb64c393fed9eeed542b"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+
+stages:
+  - pre-commit
+  - check-source
+  - build
+  - test
+  - deploy
+
+image: $FEDORA_IMAGE
+
+pre_commit:
+  stage: pre-commit
+  script:
+    - dnf install -y libatomic
+    - dnf install -y pre-commit
+    - pre-commit run --all-files
+
+test_nut_hwdb:
+  stage: check-source
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+  allow_failure: true
+  script:
+    - curl https://raw.githubusercontent.com/networkupstools/nut/master/scripts/upower/95-upower-hid.hwdb >rules/95-upower-hid.hwdb
+    - git diff
+    - "! git status -s | grep -q ."
+
+build:
+  stage: build
+  before_script:
+    - git clone https://gitlab.gnome.org/GNOME/libgudev.git
+    - cd libgudev
+    - dnf install -y glibc-langpack-fr umockdev-devel
+    - meson _build -Dprefix=/usr
+    - ninja -C _build install
+    - cd ..
+  script:
+    - meson _build -Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled
+    - ninja -C _build
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+  # avoid recompiling in test stage
+  artifacts:
+    name: untracked
+    paths:
+     - "${CI_PROJECT_DIR}"
+    expire_in: 3h30min
+
+build_debian:
+  stage: build
+  image: registry.freedesktop.org/upower/upower/debian/trixie:latest
+  before_script:
+    - apt update
+    - apt install -y git
+    - git -c http.sslVerify=false clone https://gitlab.gnome.org/GNOME/libgudev.git
+    - cd libgudev
+    - apt install -y umockdev libumockdev-dev libumockdev0 libsystemd-dev systemd
+    - meson _debian_build -Dprefix=/usr
+    - ninja -C _debian_build install
+    - cd ..
+  script:
+    - meson _debian_build -Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled
+    - ninja -C _debian_build
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+  # avoid recompiling in test stage
+  artifacts:
+    name: untracked
+    paths:
+     - "${CI_PROJECT_DIR}"
+    expire_in: 3h30min
+
+
+# Compile test the other backends (they don't have extra dependencies currently)
+.build_backend_template: &build_backend
+  stage: build
+  script:
+    - CFLAGS=-DUPOWER_CI_DISABLE_PLATFORM_CODE=1 meson _build -Dos_backend=$backend
+    - ninja -C _build
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+build_dummy:
+  variables:
+    backend: dummy
+  <<: *build_backend
+
+build_freebsd:
+  variables:
+    backend: freebsd
+  <<: *build_backend
+
+build_openbsd:
+  variables:
+    backend: openbsd
+  <<: *build_backend
+
+test:
+  stage: test
+  dependencies:
+   - build
+  before_script:
+    - git clone https://github.com/zatrazz/glibc-tools.git
+    - cd glibc-tools
+    - ./configure
+    - make install
+    - cd ..
+  script:
+    - meson _build -Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled
+    - ninja -C _build
+    - catchsegv meson test -C _build --print-errorlogs --no-stdsplit
+    - .ci/fail_skipped_tests.py _build/meson-logs/testlog.junit.xml
+
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - "${CI_PROJECT_DIR}/_build/meson-logs/"
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+test_debian:
+  stage: test
+  image: registry.freedesktop.org/upower/upower/debian/trixie:latest
+  dependencies:
+   - build_debian
+  before_script:
+    - git -c http.sslVerify=false clone https://github.com/zatrazz/glibc-tools.git
+    - cd glibc-tools
+    - ./configure
+    - make install
+    - cd ..
+    - cd libgudev
+    - apt update
+    - apt install -y umockdev libumockdev-dev libumockdev0 libsystemd-dev systemd
+    - ninja -C _debian_build install
+    - cd ..
+  script:
+    - meson _debian_build -Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled --wipe
+    - ninja -C _debian_build
+    - catchsegv meson test -C _debian_build --print-errorlogs --no-stdsplit
+    - .ci/fail_skipped_tests.py _debian_build/meson-logs/testlog.junit.xml
+
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - "${CI_PROJECT_DIR}/_debian_build/meson-logs/"
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+check_abi:
+  stage: test
+  before_script:
+    - cd libgudev
+    - dnf install -y glibc-langpack-fr umockdev-devel
+    - meson _build -Dprefix=/usr
+    - ninja -C _build install
+    - cd ..
+  script:
+    - check-abi --suppr .ci/upower.suppr --parameters="-Dman=false -Dgtk-doc=false -Didevice=enabled"  ${LAST_ABI_BREAK} $(git rev-parse HEAD)
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+# Create docs artifact for the website.
+# Note that the last successful artifact build is always kept, so 1 day as
+# expiry is completely fine.
+docs:
+  stage: deploy
+  dependencies:
+   - build
+  script:
+    - meson _build -Dintrospection=enabled -Dman=true -Dgtk-doc=true -Didevice=enabled
+    - ninja -C _build/ UPower-doc
+  artifacts:
+    name: "docs"
+    when: always
+    expire_in: 1 day
+    paths:
+      - "_build/doc/html"
+  only:
+    - master
+  except:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule"
+
+# CONTAINERS creation stage
+container_fedora_build:
+  extends: .fdo.container-build@fedora
+  only:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule" && $CRON_TASK == "BUILD_CI_IMAGES"
+  variables:
+    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
+    FDO_FORCE_REBUILD: 1
+    # a list of packages to install
+    FDO_DISTRIBUTION_PACKAGES:
+      $DEPENDENCIES
+    FDO_DISTRIBUTION_EXEC: |
+      curl https://gitlab.freedesktop.org/hadess/check-abi/-/raw/main/contrib/check-abi-fedora.sh | bash
+
+# CONTAINERS creation stage
+container_debian_build:
+  extends: .fdo.container-build@debian
+  only:
+    variables:
+      - $CI_PIPELINE_SOURCE == "schedule" && $CRON_TASK == "BUILD_CI_IMAGES"
+  variables:
+    FDO_DISTRIBUTION_TAG: latest
+    FDO_DISTRIBUTION_VERSION: trixie
+    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
+    FDO_FORCE_REBUILD: 1
+    # a list of packages to install
+    FDO_DISTRIBUTION_PACKAGES:
+      autoconf
+      automake
+      autopoint
+      autotools-dev
+      binutils
+      binutils-common
+      binutils-x86-64-linux-gnu
+      bsdextrautils
+      build-essential
+      bzip2
+      cpp
+      cpp-14
+      cpp-14-x86-64-linux-gnu
+      cpp-x86-64-linux-gnu
+      curl
+      debhelper
+      git
+      g++
+      g++-14
+      g++-14-x86-64-linux-gnu
+      g++-x86-64-linux-gnu
+      gcc
+      gcc-14
+      gcc-14-x86-64-linux-gnu
+      gcc-x86-64-linux-gnu
+      m4
+      make
+      systemd-dev
+      python3-dbus
+      python3-packaging
+      python3-dbusmock
+      gir1.2-upowerglib-1.0
+      libpolkit-gobject-1-dev
+    FDO_DISTRIBUTION_EXEC: >-
+      echo "deb-src http://deb.debian.org/debian/ trixie main contrib non-free" >> /etc/apt/sources.list &&
+      apt update &&
+      apt build-dep -y upower &&
+      curl https://gitlab.freedesktop.org/hadess/check-abi/-/raw/main/contrib/check-abi-fedora.sh | bash
