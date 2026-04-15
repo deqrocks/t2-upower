@@ -13,7 +13,13 @@ This tree carries a fix in `src/up-kbd-backlight.c` so keyboard brightness recov
 
 ## Pre-requisites
 
-For Arch/ Arch-based distributions:
+For Fedora / Fedora-based distributions:
+
+```bash
+sudo dnf install glib2-devel
+```
+
+For Arch Linux / Arch-based distributions:
 
 ```bash
 sudo pacman -S glib2-devel
