@@ -1,6 +1,7 @@
 # t2-upower
 
 UPower fork with T2-specific suspend and keyboard-backlight fixes for Intel Macs with a T2 chip.
+## A PR of this fork was accepted upstream on April 15th, 2026. The repo remains here for the time of transition
 
 ## Changes
 
